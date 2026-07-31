@@ -109,3 +109,17 @@ export function resolveEnvRefs(value: string): string {
     return envValue;
   });
 }
+
+/**
+ * Same, but an unset variable yields undefined instead of throwing. Used for
+ * values a command can do without, such as an explorer API key: a missing one
+ * drops that source rather than failing the whole run.
+ */
+export function tryResolveEnvRefs(value: string): string | undefined {
+  try {
+    const resolved = resolveEnvRefs(value);
+    return resolved === '' ? undefined : resolved;
+  } catch {
+    return undefined;
+  }
+}

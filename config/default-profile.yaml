@@ -16,6 +16,16 @@
 # USD columns of `evm wallet balance`; a chain without coingecko_id shows no
 # price. explorer_api is only needed for chains outside the Etherscan v2 API.
 
+# Block explorer API keys, used by `evm contract proxy-info --full` for verified
+# names, upgrade history and creation info. One key covers every chain a source
+# supports, and the sources are tried in the order below. Edit with:
+#
+#   evm explorer set etherscan '${ETHERSCAN_API_KEY}'
+#
+# Nothing else needs an explorer, so leaving these unset only costs those fields.
+explorers:
+  etherscan: ${ETHERSCAN_API_KEY}
+
 chains:
   arbitrum:
     chain_id: 42161

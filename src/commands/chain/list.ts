@@ -7,6 +7,7 @@ import chalk from 'chalk';
 import type { ChainListOptions } from '../../types.js';
 import { loadEnv } from '../../lib/env.js';
 import { loadProfile } from '../../lib/chains.js';
+import { maskValue } from '../../lib/mask.js';
 
 const COL = {
   chain: 15,
@@ -14,20 +15,6 @@ const COL = {
   rpc: 45,
   token: 8,
 } as const;
-
-const ENV_REF = /^\$\{([^}]+)\}$/;
-
-/** Keep an env reference readable, mask anything that could be a literal secret */
-function maskValue(value: string, reveal: boolean): string {
-  const ref = ENV_REF.exec(value);
-  if (ref) {
-    return process.env[ref[1]] === undefined ? `${value} ${chalk.yellow('(unset)')}` : value;
-  }
-  if (reveal) {
-    return value;
-  }
-  return value.length <= 4 ? '****' : `****${value.slice(-4)}`;
-}
 
 function truncate(value: string, width: number): string {
   return value.length <= width ? value : `${value.slice(0, width - 1)}…`;

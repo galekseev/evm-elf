@@ -40,12 +40,7 @@ import {
   looksLikeProxyAdmin,
   parseMinimalProxy,
 } from '../../lib/proxy.js';
-import {
-  getContractCreation,
-  getContractInfo,
-  getLogsByTopic,
-  type ExplorerTarget,
-} from '../../lib/explorer.js';
+import { ExplorerChain } from '../../lib/explorer/index.js';
 
 async function tryOwner(provider: JsonRpcProvider, address: string): Promise<string | undefined> {
   try {
@@ -93,10 +88,10 @@ async function checkErc1822(
  */
 async function findManagedProxy(
   provider: JsonRpcProvider,
-  explorer: ExplorerTarget,
+  explorer: ExplorerChain,
   adminAddress: string
 ): Promise<{ proxy: string; implementation?: string } | null> {
-  const creation = await getContractCreation(explorer, adminAddress);
+  const creation = await explorer.getContractCreation(adminAddress);
   if (!creation) {
     return null;
   }
@@ -184,7 +179,7 @@ const PROXY_TYPES_WITH_STATE = new Set(['transparent', 'uups', 'beacon', 'minima
  */
 async function enrichFull(
   provider: JsonRpcProvider,
-  explorer: ExplorerTarget,
+  explorer: ExplorerChain,
   result: ProxyInfoResult
 ): Promise<void> {
   const type = result.proxyType ?? 'none';
@@ -223,7 +218,7 @@ async function enrichFull(
   if (result.implementation && result.implementationHasCode) {
     const implCode = await provider.getCode(result.implementation);
     result.implementationCodeHash = keccak256(implCode);
-    const info = await getContractInfo(explorer, result.implementation);
+    const info = await explorer.getContractInfo(result.implementation);
     if (info) {
       result.implementationName = info.name;
       result.implementationVerified = info.verified;
@@ -234,7 +229,7 @@ async function enrichFull(
   const upgradeSource =
     type === 'beacon' ? result.beacon : type === 'beacon-contract' ? result.address : isProxy ? result.address : undefined;
   if (upgradeSource && type !== 'minimal') {
-    const logs = await getLogsByTopic(explorer, upgradeSource, UPGRADED_TOPIC);
+    const logs = await explorer.getLogsByTopic(upgradeSource, UPGRADED_TOPIC);
     if (logs) {
       result.upgradeHistory = logs
         .filter((log) => log.topics.length > 1)
@@ -247,7 +242,7 @@ async function enrichFull(
   }
 
   // Creation info (deployer, tx, date)
-  const creation = await getContractCreation(explorer, result.address);
+  const creation = await explorer.getContractCreation(result.address);
   if (creation) {
     result.createdBy = creation.creator;
     result.creationTxHash = creation.txHash;
@@ -287,14 +282,11 @@ type InspectMode = 'short' | 'normal' | 'full';
 async function inspectProxy(
   provider: JsonRpcProvider,
   resolved: ResolvedChain,
+  explorer: ExplorerChain,
   address: string,
   mode: InspectMode
 ): Promise<ProxyInfoResult> {
   const result: ProxyInfoResult = { chain: resolved.chain, chainId: resolved.chainId, address };
-  const explorer: ExplorerTarget = {
-    chainId: resolved.chainId,
-    ...(resolved.explorerApi ? { apiUrl: resolved.explorerApi } : {}),
-  };
   const light = mode === 'short';
   const full = mode === 'full';
 
@@ -662,6 +654,7 @@ export async function proxyInfoCommand(
   const profile = await loadProfile(options.profile);
   const chains = selectChains(options.chain, options.excludeChain, profile);
   const results: ProxyInfoResult[] = [];
+  let skippedLookups = false;
 
   for (const chain of chains) {
     const resolved = resolveChain(chain, profile);
@@ -671,17 +664,24 @@ export async function proxyInfoCommand(
     }
 
     const provider = createProvider(resolved.endpoint, resolved.chainId);
+    const explorer = new ExplorerChain(profile.explorers, resolved);
     try {
-      results.push(await inspectProxy(provider, resolved, address, mode));
+      const result = await inspectProxy(provider, resolved, explorer, address, mode);
+      if (explorer.source) {
+        result.explorerSource = explorer.source;
+      }
+      results.push(result);
     } catch (err) {
       results.push({ chain, chainId: resolved.chainId, address, error: (err as Error).message });
     } finally {
+      skippedLookups ||= explorer.skipped;
       provider.destroy();
     }
   }
 
   if (options.json) {
     console.log(JSON.stringify(results, null, 2));
+    reportSkippedLookups(skippedLookups);
     return;
   }
 
@@ -700,6 +700,23 @@ export async function proxyInfoCommand(
   }
 
   console.log();
+  reportSkippedLookups(skippedLookups);
+}
+
+/**
+ * Said once per run, next to the output it explains, and only when a lookup
+ * actually wanted a source: a short run needs none. It goes to stderr so that
+ * --json stays parseable.
+ */
+function reportSkippedLookups(skipped: boolean): void {
+  if (!skipped) {
+    return;
+  }
+  console.error(
+    chalk.dim(
+      "Skipped explorer lookups: no API key configured. Add one with: evm explorer set etherscan '${ETHERSCAN_API_KEY}'"
+    )
+  );
 }
 
 /**

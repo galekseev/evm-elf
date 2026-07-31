@@ -6,6 +6,10 @@
  * ExecutionConfig is replaced by RpcProfile (see src/lib/chains.ts).
  */
 
+import type { ExplorerSettings } from './lib/explorer/types.js';
+
+export type { ExplorerName, ExplorerSettings } from './lib/explorer/types.js';
+
 // ============================================================================
 // Chain configuration
 // ============================================================================
@@ -38,6 +42,8 @@ export interface RpcProfile {
   name: string;
   path: string;
   chains: Record<string, ChainConfig>;
+  /** Block explorer API keys, one per source; values may hold ${VAR} references */
+  explorers: ExplorerSettings;
 }
 
 // ============================================================================
@@ -210,6 +216,7 @@ export interface ProxyInfoResult {
   creationTxHash?: string;
   createdAt?: number;                 // creation block timestamp (unix seconds)
   accountInfo?: Record<string, ProxyAccountInfo>; // keyed by lowercase address
+  explorerSource?: string;            // explorer that answered first (--json only)
   error?: string;
 }
 
@@ -286,6 +293,27 @@ export interface ChainSetOptions {
 }
 
 export interface ChainRemoveOptions {
+  profile?: string;
+  json?: boolean;
+}
+
+// ============================================================================
+// Explorer options
+// ============================================================================
+
+export interface ExplorerListOptions {
+  profile?: string;         // name or path of the profile to read
+  reveal?: boolean;         // print keys instead of masking them
+  json?: boolean;
+}
+
+export interface ExplorerSetOptions {
+  profile?: string;         // name or path of the profile to edit
+  verify?: boolean;         // --no-verify skips the key check
+  json?: boolean;
+}
+
+export interface ExplorerRemoveOptions {
   profile?: string;
   json?: boolean;
 }

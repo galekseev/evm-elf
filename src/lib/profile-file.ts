@@ -132,6 +132,55 @@ export function removeChain(doc: Document, chain: string): boolean {
 }
 
 /**
+ * The explorers section, or undefined when there is none. Created on demand
+ * above 'chains': it is two lines long, and a reader should not have to scroll
+ * past every chain to find it.
+ */
+function explorersMap(doc: Document, create: boolean): YAMLMap | undefined {
+  const explorers = doc.get('explorers', true);
+  if (isMap(explorers)) {
+    return explorers;
+  }
+  if (explorers !== null && explorers !== undefined) {
+    throw new Error("Invalid profile: 'explorers' must be a mapping");
+  }
+  if (!create) {
+    return undefined;
+  }
+  const contents = doc.contents;
+  if (isMap(contents)) {
+    contents.items.unshift(doc.createPair('explorers', {}));
+  } else {
+    doc.set('explorers', doc.createNode({}));
+  }
+  return doc.get('explorers', true) as YAMLMap;
+}
+
+/** Configured API keys as written, with ${VAR} references left unresolved */
+export function getExplorers(doc: Document): Record<string, string> {
+  const explorers = doc.get('explorers', true);
+  if (!isMap(explorers)) {
+    return {};
+  }
+  const raw = (explorers.toJSON() ?? {}) as Record<string, unknown>;
+  const configured: Record<string, string> = {};
+  for (const [name, value] of Object.entries(raw)) {
+    if (typeof value === 'string' && value !== '') {
+      configured[name] = value;
+    }
+  }
+  return configured;
+}
+
+export function setExplorer(doc: Document, name: string, apiKey: string): void {
+  explorersMap(doc, true)?.set(name, doc.createNode(apiKey));
+}
+
+export function removeExplorer(doc: Document, name: string): boolean {
+  return explorersMap(doc, false)?.delete(name) ?? false;
+}
+
+/**
  * Write the document atomically with owner-only permissions: header values may
  * hold a literal API key.
  */
