@@ -74,7 +74,7 @@ export async function sendCommand(to: string, options: WalletSendOptions): Promi
   }
 
   const quiet = Boolean(options.json);
-  const planOnly = Boolean(options.all) && !options.exec;
+  const planOnly = !options.exec;
   const results: SendResult[] = [];
 
   if (!quiet) {

@@ -89,10 +89,10 @@ Examples:
       new Option('--value <amount>', 'Amount: "0.01", "0.01ether" or "<wei>wei"').conflicts('all')
     )
     .addOption(
-      new Option('--all', 'Sweep the entire balance minus gas reserve (plan only unless --exec)').conflicts('value')
+      new Option('--all', 'Sweep the entire balance minus gas reserve').conflicts('value')
     )
     .option('--fee-buffer <multiplier>', 'Gas reserve multiplier for --all (default: 1.1)')
-    .option('--exec', 'Send transactions in --all mode (default: display plan only)')
+    .option('--exec', 'Send transactions (default: display plan only)')
     .requiredOption('--private-key <key>', 'Private key (hex or env var name)')
     .option('-c, --chain <chains>', 'Chain(s) to send on (comma-separated; default: every chain in the profile)')
     .addOption(
@@ -106,6 +106,7 @@ Examples:
       `
 Examples:
   $ evm wallet send 0x5d0F...95eB --value 0.01 --private-key DEPLOYER_PK -c base
+  $ evm wallet send 0x5d0F...95eB --value 0.01 --private-key DEPLOYER_PK -c base --exec
   $ evm wallet send 0x5d0F...95eB --all --private-key DEPLOYER_PK -c bsc,base,arbitrum
   $ evm wallet send 0x5d0F...95eB --all --exec --private-key DEPLOYER_PK -c bsc,base,arbitrum
   $ evm wallet send 0x5d0F...95eB --all --exec --fee-buffer 1.5 --private-key DEPLOYER_PK -xc mainnet`

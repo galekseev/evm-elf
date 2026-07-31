@@ -135,7 +135,7 @@ export interface WalletSendOptions extends WalletOptions {
   value?: string;           // amount: "0.01", "0.01ether" or wei string (mutually exclusive with all)
   all?: boolean;            // sweep the entire balance minus gas reserve (mutually exclusive with value)
   feeBuffer?: string;       // gas reserve multiplier for --all (default: 1.1)
-  exec?: boolean;           // required for --all: send transactions (default: display plan only)
+  exec?: boolean;           // send transactions (default: display plan only)
   privateKey: string;       // hex key or env var name
   wait?: boolean;           // wait for receipt (default: true)
 }
