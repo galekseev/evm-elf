@@ -4,14 +4,9 @@
 
 import chalk from 'chalk';
 import { isAddress } from 'ethers';
-import type { CodeResult, RpcProfile, WalletCodeOptions } from '../../types.js';
+import type { CodeResult, WalletCodeOptions } from '../../types.js';
 import { loadEnv } from '../../lib/env.js';
-import {
-  loadProfile,
-  loadKnownChains,
-  resolveChain,
-  selectChains,
-} from '../../lib/chains.js';
+import { loadProfile, resolveChain, selectChains } from '../../lib/chains.js';
 import { createProvider } from '../../lib/rpc.js';
 
 export async function codeCommand(address: string, options: WalletCodeOptions): Promise<void> {
@@ -22,13 +17,8 @@ export async function codeCommand(address: string, options: WalletCodeOptions): 
     process.exit(1);
   }
 
-  const knownChains = await loadKnownChains();
-  let profile: RpcProfile | undefined;
-  if (options.profile) {
-    profile = await loadProfile(options.profile);
-  }
-
-  const chains = selectChains(options.chain, options.excludeChain, profile, knownChains);
+  const profile = await loadProfile(options.profile);
+  const chains = selectChains(options.chain, options.excludeChain, profile);
 
   if (options.full && chains.length !== 1) {
     console.error(chalk.red('--full requires exactly one chain (use -c <chain>)'));
@@ -38,7 +28,7 @@ export async function codeCommand(address: string, options: WalletCodeOptions): 
   const results: CodeResult[] = [];
 
   for (const chain of chains) {
-    const resolved = resolveChain(chain, profile, knownChains);
+    const resolved = resolveChain(chain, profile);
     if (!resolved.endpoint) {
       results.push({
         chain,

@@ -9,14 +9,9 @@
 
 import chalk from 'chalk';
 import { Wallet, formatEther, isAddress, parseEther } from 'ethers';
-import type { RpcProfile, SendResult, WalletSendOptions } from '../../types.js';
+import type { SendResult, WalletSendOptions } from '../../types.js';
 import { loadEnv } from '../../lib/env.js';
-import {
-  loadProfile,
-  loadKnownChains,
-  resolveChain,
-  selectChains,
-} from '../../lib/chains.js';
+import { loadProfile, resolveChain, selectChains } from '../../lib/chains.js';
 import { createProvider } from '../../lib/rpc.js';
 import { resolvePrivateKey } from '../../lib/wallet.js';
 
@@ -71,13 +66,8 @@ export async function sendCommand(to: string, options: WalletSendOptions): Promi
     process.exit(1);
   }
 
-  const knownChains = await loadKnownChains();
-  let profile: RpcProfile | undefined;
-  if (options.profile) {
-    profile = await loadProfile(options.profile);
-  }
-
-  const chains = selectChains(options.chain, options.excludeChain, profile, knownChains);
+  const profile = await loadProfile(options.profile);
+  const chains = selectChains(options.chain, options.excludeChain, profile);
   if (chains.length === 0) {
     console.error(chalk.red('No chains selected'));
     process.exit(1);
@@ -102,7 +92,7 @@ export async function sendCommand(to: string, options: WalletSendOptions): Promi
   for (let i = 0; i < chains.length; i++) {
     const chain = chains[i];
     const progress = chalk.dim(`[${i + 1}/${chains.length}]`);
-    const resolved = resolveChain(chain, profile, knownChains);
+    const resolved = resolveChain(chain, profile);
 
     const base: SendResult = {
       chain,

@@ -17,11 +17,11 @@ export function buildWalletCommand(): Command {
   wallet
     .command('balance <wallet>')
     .description('Get native balance, USD value and nonce across chains (wallet: address, private key, or env var name)')
-    .option('-c, --chain <chains>', 'Chain(s) to query (comma-separated; default: all known chains)')
+    .option('-c, --chain <chains>', 'Chain(s) to query (comma-separated; default: every chain in the profile)')
     .addOption(
-      new Option('-xc, --exclude-chain <chains>', 'Exclude chain(s) from the default list (comma-separated)').conflicts('chain')
+      new Option('-xc, --exclude-chain <chains>', 'Exclude chain(s) from the profile (comma-separated)').conflicts('chain')
     )
-    .option('-p, --profile <nameOrPath>', 'Use RPC URLs from a profile')
+    .option('-p, --profile <nameOrPath>', 'Profile to use (default: default, or $EVM_ELF_PROFILE)')
     .option('--no-usd', 'Skip USD valuation (no price API request)')
     .option('--json', 'Output as JSON')
     .addHelpText(
@@ -38,12 +38,12 @@ Examples:
   wallet
     .command('set-nonce <target>')
     .description('Bump wallet nonce to target by sending zero-value self-transactions')
-    .option('-c, --chain <chains>', 'Chain(s) to update (comma-separated; default: all known chains)')
+    .option('-c, --chain <chains>', 'Chain(s) to update (comma-separated; default: every chain in the profile)')
     .addOption(
-      new Option('-xc, --exclude-chain <chains>', 'Exclude chain(s) from the default list (comma-separated)').conflicts('chain')
+      new Option('-xc, --exclude-chain <chains>', 'Exclude chain(s) from the profile (comma-separated)').conflicts('chain')
     )
     .requiredOption('--private-key <key>', 'Private key (hex or env var name)')
-    .option('-p, --profile <nameOrPath>', 'Use RPC URLs from a profile')
+    .option('-p, --profile <nameOrPath>', 'Profile to use (default: default, or $EVM_ELF_PROFILE)')
     .option('--exec', 'Send transactions (default: display plan only)')
     .option('--json', 'Output as JSON')
     .addHelpText(
@@ -94,11 +94,11 @@ Examples:
     .option('--fee-buffer <multiplier>', 'Gas reserve multiplier for --all (default: 1.1)')
     .option('--exec', 'Send transactions in --all mode (default: display plan only)')
     .requiredOption('--private-key <key>', 'Private key (hex or env var name)')
-    .option('-c, --chain <chains>', 'Chain(s) to send on (comma-separated; default: all known chains)')
+    .option('-c, --chain <chains>', 'Chain(s) to send on (comma-separated; default: every chain in the profile)')
     .addOption(
-      new Option('-xc, --exclude-chain <chains>', 'Exclude chain(s) from the default list (comma-separated)').conflicts('chain')
+      new Option('-xc, --exclude-chain <chains>', 'Exclude chain(s) from the profile (comma-separated)').conflicts('chain')
     )
-    .option('-p, --profile <nameOrPath>', 'Use RPC URLs from a profile')
+    .option('-p, --profile <nameOrPath>', 'Profile to use (default: default, or $EVM_ELF_PROFILE)')
     .option('--no-wait', 'Do not wait for the transaction receipt')
     .option('--json', 'Output as JSON')
     .addHelpText(

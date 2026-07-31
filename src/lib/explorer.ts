@@ -1,15 +1,16 @@
 /**
  * Minimal block explorer API client (contract creation lookups)
- * Uses the Etherscan v2 multichain API, with overrides for chains it
- * does not cover (e.g. zksync Era's native Etherscan-compatible API).
+ * Uses the Etherscan v2 multichain API unless the chain names its own
+ * Etherscan-compatible API (explorer_api in the profile, e.g. zksync Era).
  */
 
 const ETHERSCAN_V2_API = 'https://api.etherscan.io/v2/api';
 
-// Chains not covered by Etherscan v2 that expose an Etherscan-compatible API (no key required)
-const CUSTOM_EXPLORER_APIS: Record<number, string> = {
-  324: 'https://block-explorer-api.mainnet.zksync.io/api',
-};
+export interface ExplorerTarget {
+  chainId: number;
+  /** Etherscan-compatible API for chains outside Etherscan v2 (no key required) */
+  apiUrl?: string;
+}
 
 export interface ContractCreation {
   txHash: string;
@@ -28,12 +29,11 @@ export interface ExplorerLog {
   timestamp?: number;
 }
 
-function buildUrl(chainId: number, query: string): string {
-  const custom = CUSTOM_EXPLORER_APIS[chainId];
+function buildUrl(target: ExplorerTarget, query: string): string {
   const apiKey = process.env.ETHERSCAN_API_KEY;
-  return custom
-    ? `${custom}?${query}`
-    : `${ETHERSCAN_V2_API}?chainid=${chainId}&${query}${apiKey ? `&apikey=${apiKey}` : ''}`;
+  return target.apiUrl
+    ? `${target.apiUrl}?${query}`
+    : `${ETHERSCAN_V2_API}?chainid=${target.chainId}&${query}${apiKey ? `&apikey=${apiKey}` : ''}`;
 }
 
 async function fetchExplorer<T>(url: string): Promise<{ status: string; message?: string; result?: T } | null> {
@@ -56,11 +56,11 @@ function parseHexOrDecimal(value: string | undefined): number | undefined {
  * supported explorer API / the lookup fails. Uses ETHERSCAN_API_KEY when set.
  */
 export async function getContractCreation(
-  chainId: number,
+  target: ExplorerTarget,
   address: string
 ): Promise<ContractCreation | null> {
   const url = buildUrl(
-    chainId,
+    target,
     `module=contract&action=getcontractcreation&contractaddresses=${address}`
   );
   const body = await fetchExplorer<{ txHash?: string; contractCreator?: string }[] | string>(url);
@@ -80,10 +80,10 @@ export async function getContractCreation(
  * contract exists but its source is not verified.
  */
 export async function getContractInfo(
-  chainId: number,
+  target: ExplorerTarget,
   address: string
 ): Promise<ExplorerContractInfo | null> {
-  const url = buildUrl(chainId, `module=contract&action=getsourcecode&address=${address}`);
+  const url = buildUrl(target, `module=contract&action=getsourcecode&address=${address}`);
   const body = await fetchExplorer<{ ContractName?: string; SourceCode?: string }[] | string>(url);
   if (!body || body.status !== '1' || !Array.isArray(body.result) || body.result.length === 0) {
     return null;
@@ -99,12 +99,12 @@ export async function getContractInfo(
  * or when the chain has no supported explorer API.
  */
 export async function getLogsByTopic(
-  chainId: number,
+  target: ExplorerTarget,
   address: string,
   topic0: string
 ): Promise<ExplorerLog[] | null> {
   const url = buildUrl(
-    chainId,
+    target,
     `module=logs&action=getLogs&address=${address}&topic0=${topic0}&fromBlock=0&toBlock=latest&page=1&offset=1000`
   );
   const body = await fetchExplorer<

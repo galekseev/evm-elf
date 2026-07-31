@@ -6,7 +6,7 @@
 import { CoinGeckoPriceSource } from './coingecko.js';
 import type { PriceSource } from './types.js';
 
-export type { PriceSource } from './types.js';
+export type { PriceChain, PriceSource } from './types.js';
 
 class NonePriceSource implements PriceSource {
   readonly name = 'none';

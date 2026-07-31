@@ -2,7 +2,7 @@
 
 Multi-chain EVM wallet and contract CLI, built on ethers v6. Two things shape it:
 
-- **Reads fan out.** Every query hits all known chains at once unless you narrow it with `-c`/`-xc`, so `evm contract proxy-info 0x...` answers "where is this deployed and what is it" in one pass.
+- **Reads fan out.** Every query hits all the chains in your profile at once unless you narrow it with `-c`/`-xc`, so `evm contract proxy-info 0x...` answers "where is this deployed and what is it" in one pass.
 - **Writes are dry-run.** Anything that sends a transaction prints a plan, checks the signer, and static-calls first. Nothing leaves your machine until you add `--exec`.
 
 Installs as `evm`:
@@ -17,45 +17,80 @@ Every command supports `--help`.
 
 ## Configuration
 
+Everything the CLI knows about a chain lives in one file, a profile:
+
 | What | Where |
 |---|---|
-| RPC URL per chain | `<CHAIN>_RPC_URL` env var (e.g. `BASE_RPC_URL`), read from `./.env` then `~/.config/evm-elf/.env` |
-| Extra or redefined chains | `~/.config/evm-elf/chains.yaml` |
-| Named RPC sets | `~/.config/evm-elf/profiles/<name>.yaml` |
+| Chains: RPC URL, HTTP headers, token and explorer metadata | `~/.config/evm-elf/profiles/<name>.yaml` |
+| Which profile is used | `-p <name>`, else `$EVM_ELF_PROFILE`, else `default` |
+| Values referenced as `${VAR}` | `./.env`, then `~/.config/evm-elf/.env` |
 
-The bundled chain list covers 14 chains (`config/chains.yaml`). A user `chains.yaml` is merged on top, so adding a chain does not require a fork:
-
-```yaml
-mychain: 31337
-```
-
-A profile names RPC endpoints, and naming a subset of chains also narrows the default chain list — a profile doubles as "the chains this project uses":
+A profile is also the chain list: the chains it names are the chains every read fans out across. The `default` profile is created on first use from the one bundled with the package ([config/default-profile.yaml](config/default-profile.yaml)) — 14 chains pointed at their own public endpoints, which is enough to try things out and rate-limited under load.
 
 ```yaml
-# ~/.config/evm-elf/profiles/myproject.yaml
+# ~/.config/evm-elf/profiles/default.yaml
 chains:
-  base: https://base.example/rpc
+  base:
+    chain_id: 8453
+    rpc_url: https://mainnet.base.org
+    symbol: ETH
+    coingecko_id: ethereum
   arbitrum:
-    rpc_url: ${ARBITRUM_RPC_URL}
     chain_id: 42161
+    rpc_url: ${ARBITRUM_RPC_URL}
+    symbol: ETH
+    coingecko_id: ethereum
+    headers:
+      auth-key: ${ARBITRUM_AUTH_KEY}
+  zksync:
+    chain_id: 324
+    rpc_url: https://mainnet.era.zksync.io
+    symbol: ETH
+    coingecko_id: ethereum
+    explorer_api: https://block-explorer-api.mainnet.zksync.io/api
 ```
+
+`chain_id` and `rpc_url` are required per chain. The rest is what an RPC cannot tell you: `symbol` and `coingecko_id` fill the token and USD columns of `wallet balance` (no `coingecko_id`, no price), and `explorer_api` overrides Etherscan v2 for a chain it does not cover. `${VAR}` is resolved from the environment, which keeps keys out of the file, and `rpc_url` also accepts the `<URL>|<AUTH_KEY>` form as shorthand for the `auth-key` header.
+
+Use several profiles for several projects — a profile doubles as "the chains this project uses":
 
 ```bash
 evm wallet balance 0x72B4...Be7a -p myproject
 ```
 
-RPC URLs support the `<URL>|<AUTH_KEY>` form, where the auth key is sent as an `auth-key` HTTP header. `${VAR}` in a profile is resolved from the environment.
+### Chain commands
+
+`evm chain` edits a profile in place, keeping its comments and key order:
+
+```bash
+evm chain list                                                   # what is configured
+evm chain set base https://base.example/rpc                      # add or update a chain
+evm chain set base '${BASE_RPC_URL}' -H 'auth-key:${BASE_KEY}'   # keep the secrets in .env
+evm chain set base -H 'auth-key:literal-key'                     # only change the header
+evm chain remove sepolia
+```
+
+`set` reads the chain id from the endpoint (`eth_chainId`) instead of guessing, so any chain works and a `--chain-id` that disagrees is an error. `--no-verify` skips the request and then needs `--chain-id`. Metadata the entry does not have yet — `symbol`, `coingecko_id`, `explorer_api` — is copied from the bundled profile when the chain id matches, which also covers forks; `--symbol`, `--coingecko-id` and `--explorer-api` override, and an empty value (`--symbol ''`) clears.
+
+`chain list` masks header values, since one may be a literal key; `--reveal` prints them. All three take `-p` to work on another profile, and an edited file is written with owner-only permissions.
 
 ### Chain selection
 
 1. `-c, --chain` — explicit comma-separated list
-2. `-p, --profile` — the chains the profile names
-3. every chain in the chain list
+2. every chain in the profile
 
-`-xc, --exclude-chain` (mutually exclusive with `-c`) takes the default list from 2 or 3 and removes the named chains:
+`-xc, --exclude-chain` (mutually exclusive with `-c`) takes the profile's chains and removes the named ones:
 
 ```bash
 evm contract owner 0xD935...bf65 -xc mainnet,zksync
+```
+
+### Upgrading from 0.1
+
+`~/.config/evm-elf/chains.yaml` and the `<CHAIN>_RPC_URL` variables are no longer read, and a chain in a profile now needs `chain_id` alongside `rpc_url`. To carry an old setting over:
+
+```bash
+evm chain set base "$BASE_RPC_URL"    # writes the id and the token metadata too
 ```
 
 ### Private keys
@@ -138,7 +173,7 @@ Auto-detects the proxy type and prints what is relevant for each:
 | Beacon proxy | beacon, beacon owner, `beacon.implementation()`, proxy-level `owner()` |
 | Minimal proxy (EIP-1167/7511 clone) | implementation embedded in bytecode (not upgradeable) |
 | Beacon contract | the address itself is a beacon: its implementation and owner |
-| ProxyAdmin contract | owner, plus the managed proxy and its implementation (traced via the admin's creation tx — works for OZ v5 admins, requires an explorer API: Etherscan v2 or the zksync native API) |
+| ProxyAdmin contract | owner, plus the managed proxy and its implementation (traced via the admin's creation tx — works for OZ v5 admins, requires an explorer API: Etherscan v2, or the chain's own `explorer_api`) |
 | Not a proxy | `owner()` if present |
 
 ```bash
@@ -147,7 +182,7 @@ evm contract proxy-info 0xProxy... -s              # chain + proxy type only
 evm contract proxy-info 0xProxy... -c base --full  # extra diagnostics
 ```
 
-`-s, --short` skips owner lookups and the managed-proxy trace, so it is fast enough to scan every known chain at once.
+`-s, --short` skips owner lookups and the managed-proxy trace, so it is fast enough to scan every chain in the profile at once.
 
 `--full` adds:
 
@@ -197,7 +232,7 @@ evm contract code 0xD935...bf65 -c base --full   # full bytecode hex
 | `coingecko` (default) | One batched request to the public CoinGecko `simple/price` endpoint. No API key needed; set `COINGECKO_API_KEY` to use a demo key. |
 | `none` | No price lookups at all, the same as passing `--no-usd` everywhere. |
 
-The lookup is best-effort: a failing, rate-limited or slow source (5s timeout) leaves the USD column empty rather than failing the command. Native token symbols and their CoinGecko ids live in `src/lib/native-token.ts`; a chain missing from that map reports no symbol and no price.
+The lookup is best-effort: a failing, rate-limited or slow source (5s timeout) leaves the USD column empty rather than failing the command. Which coin a chain's native token is comes from the profile (`symbol`, `coingecko_id`), so a chain without those reports no symbol and no price.
 
 ## Development
 

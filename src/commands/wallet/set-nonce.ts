@@ -5,14 +5,9 @@
 
 import chalk from 'chalk';
 import { Wallet } from 'ethers';
-import type { RpcProfile, SetNonceResult, WalletSetNonceOptions } from '../../types.js';
+import type { SetNonceResult, WalletSetNonceOptions } from '../../types.js';
 import { loadEnv } from '../../lib/env.js';
-import {
-  loadProfile,
-  loadKnownChains,
-  resolveChain,
-  selectChains,
-} from '../../lib/chains.js';
+import { loadProfile, resolveChain, selectChains } from '../../lib/chains.js';
 import { createProvider } from '../../lib/rpc.js';
 import { deriveAddress, resolvePrivateKey } from '../../lib/wallet.js';
 
@@ -41,17 +36,12 @@ export async function setNonceCommand(
     process.exit(1);
   }
 
-  const knownChains = await loadKnownChains();
-  let profile: RpcProfile | undefined;
-  if (options.profile) {
-    profile = await loadProfile(options.profile);
-  }
-
-  const chains = selectChains(options.chain, options.excludeChain, profile, knownChains);
+  const profile = await loadProfile(options.profile);
+  const chains = selectChains(options.chain, options.excludeChain, profile);
   const results: SetNonceResult[] = [];
 
   for (const chain of chains) {
-    const resolved = resolveChain(chain, profile, knownChains);
+    const resolved = resolveChain(chain, profile);
     const base: SetNonceResult = {
       chain,
       chainId: resolved.chainId,

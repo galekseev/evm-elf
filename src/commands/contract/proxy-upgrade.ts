@@ -5,13 +5,9 @@
 
 import chalk from 'chalk';
 import { Contract, Wallet, getAddress, isAddress, isHexString } from 'ethers';
-import type {
-  ContractUpgradeOptions,
-  RpcProfile,
-  UpgradeProxyResult,
-} from '../../types.js';
+import type { ContractUpgradeOptions, UpgradeProxyResult } from '../../types.js';
 import { loadEnv } from '../../lib/env.js';
-import { loadProfile, loadKnownChains, resolveChain } from '../../lib/chains.js';
+import { loadProfile, resolveChain } from '../../lib/chains.js';
 import { createProvider } from '../../lib/rpc.js';
 import { resolvePrivateKey } from '../../lib/wallet.js';
 import {
@@ -59,13 +55,8 @@ export async function proxyUpgradeCommand(
     process.exit(1);
   }
 
-  const knownChains = await loadKnownChains();
-  let profile: RpcProfile | undefined;
-  if (options.profile) {
-    profile = await loadProfile(options.profile);
-  }
-
-  const resolved = resolveChain(chain, profile, knownChains);
+  const profile = await loadProfile(options.profile);
+  const resolved = resolveChain(chain, profile);
   if (!resolved.endpoint) {
     console.error(chalk.red(`${chain}: ${resolved.error}`));
     process.exit(1);

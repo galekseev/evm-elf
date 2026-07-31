@@ -17,11 +17,11 @@ export function buildContractCommand(): Command {
   contract
     .command('owner <address>')
     .description('Read owner() of a contract across chains')
-    .option('-c, --chain <chains>', 'Chain(s) to query (comma-separated; default: all known chains)')
+    .option('-c, --chain <chains>', 'Chain(s) to query (comma-separated; default: every chain in the profile)')
     .addOption(
-      new Option('-xc, --exclude-chain <chains>', 'Exclude chain(s) from the default list (comma-separated)').conflicts('chain')
+      new Option('-xc, --exclude-chain <chains>', 'Exclude chain(s) from the profile (comma-separated)').conflicts('chain')
     )
-    .option('-p, --profile <nameOrPath>', 'Use RPC URLs from a profile')
+    .option('-p, --profile <nameOrPath>', 'Profile to use (default: default, or $EVM_ELF_PROFILE)')
     .option('--json', 'Output as JSON')
     .addHelpText(
       'after',
@@ -37,7 +37,7 @@ Examples:
     .description('Call transferOwnership(newOwner) on a contract (dry-run by default)')
     .requiredOption('-c, --chain <chain>', 'Chain to operate on (single chain)')
     .requiredOption('--private-key <key>', 'Private key (hex or env var name)')
-    .option('-p, --profile <nameOrPath>', 'Use RPC URLs from a profile')
+    .option('-p, --profile <nameOrPath>', 'Profile to use (default: default, or $EVM_ELF_PROFILE)')
     .option('--exec', 'Send the transaction (default: dry-run with static call)')
     .option('--json', 'Output as JSON')
     .addHelpText(
@@ -52,11 +52,11 @@ Examples:
   contract
     .command('proxy-info <address>')
     .description('Auto-detect proxy type and inspect it (implementation, admin, owners) across chains')
-    .option('-c, --chain <chains>', 'Chain(s) to query (comma-separated; default: all known chains)')
+    .option('-c, --chain <chains>', 'Chain(s) to query (comma-separated; default: every chain in the profile)')
     .addOption(
-      new Option('-xc, --exclude-chain <chains>', 'Exclude chain(s) from the default list (comma-separated)').conflicts('chain')
+      new Option('-xc, --exclude-chain <chains>', 'Exclude chain(s) from the profile (comma-separated)').conflicts('chain')
     )
-    .option('-p, --profile <nameOrPath>', 'Use RPC URLs from a profile')
+    .option('-p, --profile <nameOrPath>', 'Profile to use (default: default, or $EVM_ELF_PROFILE)')
     .option('-s, --short', 'Only print chain and detected proxy type (faster, skips owner lookups)')
     .option('--full', 'Extra diagnostics: code size, ProxyAdmin version, ERC-1822 check for UUPS')
     .option('--json', 'Output as JSON')
@@ -77,7 +77,7 @@ Examples:
     .requiredOption('-c, --chain <chain>', 'Chain to operate on (single chain)')
     .requiredOption('--private-key <key>', 'Private key (hex or env var name)')
     .option('--data <hex>', 'Calldata for upgradeAndCall (default: 0x)')
-    .option('-p, --profile <nameOrPath>', 'Use RPC URLs from a profile')
+    .option('-p, --profile <nameOrPath>', 'Profile to use (default: default, or $EVM_ELF_PROFILE)')
     .option('--exec', 'Send the transaction (default: dry-run with static call)')
     .option('--json', 'Output as JSON')
     .addHelpText(
@@ -92,11 +92,11 @@ Examples:
   contract
     .command('code <address>')
     .description('Check deployed bytecode at an address across chains')
-    .option('-c, --chain <chains>', 'Chain(s) to query (comma-separated; default: all known chains)')
+    .option('-c, --chain <chains>', 'Chain(s) to query (comma-separated; default: every chain in the profile)')
     .addOption(
-      new Option('-xc, --exclude-chain <chains>', 'Exclude chain(s) from the default list (comma-separated)').conflicts('chain')
+      new Option('-xc, --exclude-chain <chains>', 'Exclude chain(s) from the profile (comma-separated)').conflicts('chain')
     )
-    .option('-p, --profile <nameOrPath>', 'Use RPC URLs from a profile')
+    .option('-p, --profile <nameOrPath>', 'Profile to use (default: default, or $EVM_ELF_PROFILE)')
     .option('--full', 'Print full bytecode hex (requires exactly one chain)')
     .option('--json', 'Output as JSON')
     .addHelpText(

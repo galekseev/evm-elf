@@ -4,18 +4,12 @@
 
 import chalk from 'chalk';
 import { formatEther } from 'ethers';
-import type { BalanceResult, RpcProfile, WalletBalanceOptions } from '../../types.js';
+import type { BalanceResult, WalletBalanceOptions } from '../../types.js';
 import { loadEnv } from '../../lib/env.js';
 import { resolveAddress } from '../../lib/wallet.js';
-import {
-  loadProfile,
-  loadKnownChains,
-  resolveChain,
-  selectChains,
-} from '../../lib/chains.js';
+import { loadProfile, resolveChain, selectChains } from '../../lib/chains.js';
 import { createProvider } from '../../lib/rpc.js';
-import { getNativeToken } from '../../lib/native-token.js';
-import { resolvePriceSource } from '../../lib/prices/index.js';
+import { resolvePriceSource, type PriceChain } from '../../lib/prices/index.js';
 
 const COL = {
   chain: 15,
@@ -36,13 +30,20 @@ function formatUsd(value: number): string {
  * Value the balances in USD in place. Chains the price source cannot price
  * keep priceUsd/valueUsd unset.
  */
-async function addUsdValues(results: BalanceResult[]): Promise<void> {
-  const chainIds = [...new Set(results.filter((r) => !r.error).map((r) => r.chainId))];
-  if (chainIds.length === 0) {
+async function addUsdValues(
+  results: BalanceResult[],
+  coingeckoIds: Map<number, string>
+): Promise<void> {
+  const chains: PriceChain[] = [...new Set(results.filter((r) => !r.error).map((r) => r.chainId))]
+    .map((chainId) => {
+      const coingeckoId = coingeckoIds.get(chainId);
+      return { chainId, ...(coingeckoId ? { coingeckoId } : {}) };
+    });
+  if (chains.length === 0) {
     return;
   }
 
-  const prices = await resolvePriceSource().getNativeUsdPrices(chainIds);
+  const prices = await resolvePriceSource().getNativeUsdPrices(chains);
   for (const result of results) {
     const price = prices.get(result.chainId);
     if (result.error || price === undefined || price === null) {
@@ -64,19 +65,18 @@ export async function balanceCommand(wallet: string, options: WalletBalanceOptio
     process.exit(1);
   }
 
-  const knownChains = await loadKnownChains();
-  let profile: RpcProfile | undefined;
-  if (options.profile) {
-    profile = await loadProfile(options.profile);
-  }
-
-  const chains = selectChains(options.chain, options.excludeChain, profile, knownChains);
+  const profile = await loadProfile(options.profile);
+  const chains = selectChains(options.chain, options.excludeChain, profile);
   const showUsd = options.usd !== false;
   const results: BalanceResult[] = [];
+  const coingeckoIds = new Map<number, string>();
 
   for (const chain of chains) {
-    const resolved = resolveChain(chain, profile, knownChains);
-    const symbol = getNativeToken(resolved.chainId)?.symbol;
+    const resolved = resolveChain(chain, profile);
+    const symbol = resolved.symbol;
+    if (resolved.coingeckoId) {
+      coingeckoIds.set(resolved.chainId, resolved.coingeckoId);
+    }
     if (!resolved.endpoint) {
       results.push({
         chain,
@@ -123,7 +123,7 @@ export async function balanceCommand(wallet: string, options: WalletBalanceOptio
   }
 
   if (showUsd) {
-    await addUsdValues(results);
+    await addUsdValues(results, coingeckoIds);
   }
 
   if (options.json) {

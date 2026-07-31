@@ -1,9 +1,9 @@
 /**
  * Configuration discovery and environment loading.
  *
- * Nothing here assumes a checkout: the chain list ships inside the package and
- * user overrides live under the XDG config directory, so the CLI behaves the
- * same whether it runs from source or from a global install.
+ * Nothing here assumes a checkout: the default profile ships inside the package
+ * and the profiles the CLI actually reads live under the XDG config directory,
+ * so it behaves the same whether it runs from source or from a global install.
  */
 
 import { existsSync } from 'fs';
@@ -14,29 +14,29 @@ import { config as dotenvConfig } from 'dotenv';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-const BUNDLED_CHAINS_RELATIVE = 'config/chains.yaml';
+const BUNDLED_PROFILE_RELATIVE = 'config/default-profile.yaml';
 
 /**
- * Walk up to the package root, identified by the bundled chain list. A fixed
+ * Walk up to the package root, identified by the bundled profile. A fixed
  * relative path doesn't work: this file sits at src/lib/ when run from source
  * (tsx) but at dist/src/lib/ once compiled.
  */
 function findPackageRoot(start: string): string {
   let dir = start;
   for (;;) {
-    if (existsSync(resolve(dir, BUNDLED_CHAINS_RELATIVE))) {
+    if (existsSync(resolve(dir, BUNDLED_PROFILE_RELATIVE))) {
       return dir;
     }
     const parent = dirname(dir);
     if (parent === dir) {
-      throw new Error(`Could not locate bundled ${BUNDLED_CHAINS_RELATIVE} above ${start}`);
+      throw new Error(`Could not locate bundled ${BUNDLED_PROFILE_RELATIVE} above ${start}`);
     }
     dir = parent;
   }
 }
 
 export const PACKAGE_ROOT = findPackageRoot(__dirname);
-export const BUNDLED_CHAINS_PATH = resolve(PACKAGE_ROOT, BUNDLED_CHAINS_RELATIVE);
+export const BUNDLED_DEFAULT_PROFILE_PATH = resolve(PACKAGE_ROOT, BUNDLED_PROFILE_RELATIVE);
 
 const CONFIG_HOME = process.env.XDG_CONFIG_HOME || resolve(homedir(), '.config');
 
@@ -45,8 +45,15 @@ export const USER_CONFIG_DIR = process.env.EVM_ELF_CONFIG_DIR
   ? resolve(process.env.EVM_ELF_CONFIG_DIR)
   : resolve(CONFIG_HOME, 'evm-elf');
 
-export const USER_CHAINS_PATH = resolve(USER_CONFIG_DIR, 'chains.yaml');
 export const PROFILES_DIR = resolve(USER_CONFIG_DIR, 'profiles');
+
+/** Profile used when -p is not given; seeded from the bundled one on first use. */
+export const DEFAULT_PROFILE_NAME = 'default';
+
+/** The profile to use when -p is not given. */
+export function defaultProfileName(): string {
+  return process.env.EVM_ELF_PROFILE || DEFAULT_PROFILE_NAME;
+}
 
 let envLoaded = false;
 

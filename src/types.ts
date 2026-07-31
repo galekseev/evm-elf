@@ -10,18 +10,34 @@
 // Chain configuration
 // ============================================================================
 
-/** Chain name -> chain id, from the bundled chain list or a user override */
-export type KnownChains = Record<string, number>;
-
-/** Shorthand form is the RPC URL itself; chain_id overrides the bundled list */
-export type RpcProfileChain = string | { rpc_url: string; chain_id?: number };
+/**
+ * Everything the CLI knows about one chain. chain_id and rpc_url are required
+ * to reach the chain; the rest is metadata that cannot be read from an RPC.
+ * Both are optional here so that a half-written entry still lists and reports
+ * a useful error instead of failing the whole profile.
+ */
+export interface ChainConfig {
+  chain_id?: number;
+  rpc_url?: string;
+  /** Sent with every RPC request, e.g. { 'auth-key': '${BASE_AUTH_KEY}' } */
+  headers?: Record<string, string>;
+  /** Native token symbol, shown by wallet balance */
+  symbol?: string;
+  /** CoinGecko coin id; without it the native token has no USD value */
+  coingecko_id?: string;
+  /** Etherscan-compatible API for chains outside Etherscan v2 (e.g. zksync Era) */
+  explorer_api?: string;
+}
 
 /**
- * A named set of RPC endpoints. Naming a subset of chains here also narrows the
- * default chain list, so a profile doubles as "the chains this project uses".
+ * A profile is the chain configuration: the chains it names are the chains the
+ * CLI knows about, so a profile doubles as "the chains this project uses".
  */
 export interface RpcProfile {
-  chains: Record<string, RpcProfileChain>;
+  /** Profile name (or the path it was loaded from), used in error messages */
+  name: string;
+  path: string;
+  chains: Record<string, ChainConfig>;
 }
 
 // ============================================================================
@@ -245,4 +261,31 @@ export interface ContractUpgradeOptions extends WalletOptions {
   privateKey: string;       // hex key or env var name
   data?: string;            // calldata for upgradeAndCall (default: 0x)
   exec?: boolean;           // send transaction (default: dry-run only)
+}
+
+// ============================================================================
+// Chain configuration options
+// ============================================================================
+
+export interface ChainListOptions {
+  profile?: string;         // name or path of the profile to read
+  reveal?: boolean;         // print header values instead of masking them
+  json?: boolean;
+}
+
+export interface ChainSetOptions {
+  profile?: string;         // name or path of the profile to edit
+  chainId?: string;         // skips the eth_chainId lookup
+  header?: string[];        // repeatable "<name>:<value>"
+  removeHeader?: string[];  // repeatable header name
+  symbol?: string;          // empty string clears the field
+  coingeckoId?: string;
+  explorerApi?: string;
+  verify?: boolean;         // --no-verify skips the eth_chainId check
+  json?: boolean;
+}
+
+export interface ChainRemoveOptions {
+  profile?: string;
+  json?: boolean;
 }

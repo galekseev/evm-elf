@@ -1,0 +1,92 @@
+# Default profile, copied to ~/.config/evm-elf/profiles/default.yaml on first use.
+#
+# A profile is the chain configuration: the chains listed here are the chains
+# the CLI knows about, and every read fans out across all of them unless you
+# narrow it with -c/-xc. Edit it by hand or with `evm chain set <chain> <url>`.
+#
+# chain_id and rpc_url are required per chain. The RPC URLs below are the
+# chains' own public endpoints: fine for a few queries, rate-limited under load,
+# so point the chains you use at your own provider:
+#
+#   evm chain set base https://base.example/rpc
+#   evm chain set base '${BASE_RPC_URL}' -H 'auth-key:${BASE_AUTH_KEY}'
+#
+# ${VAR} is resolved from the environment (./.env, then ~/.config/evm-elf/.env),
+# which keeps keys out of this file. symbol and coingecko_id drive the token and
+# USD columns of `evm wallet balance`; a chain without coingecko_id shows no
+# price. explorer_api is only needed for chains outside the Etherscan v2 API.
+
+chains:
+  arbitrum:
+    chain_id: 42161
+    rpc_url: https://arb1.arbitrum.io/rpc
+    symbol: ETH
+    coingecko_id: ethereum
+  avax:
+    chain_id: 43114
+    rpc_url: https://api.avax.network/ext/bc/C/rpc
+    symbol: AVAX
+    coingecko_id: avalanche-2
+  base:
+    chain_id: 8453
+    rpc_url: https://mainnet.base.org
+    symbol: ETH
+    coingecko_id: ethereum
+  bsc:
+    chain_id: 56
+    rpc_url: https://bsc-dataseed.bnbchain.org
+    symbol: BNB
+    coingecko_id: binancecoin
+  xdai:
+    chain_id: 100
+    rpc_url: https://rpc.gnosischain.com
+    symbol: xDAI
+    coingecko_id: xdai
+  linea:
+    chain_id: 59144
+    rpc_url: https://rpc.linea.build
+    symbol: ETH
+    coingecko_id: ethereum
+  mainnet:
+    chain_id: 1
+    rpc_url: https://ethereum-rpc.publicnode.com
+    symbol: ETH
+    coingecko_id: ethereum
+  optimistic:
+    chain_id: 10
+    rpc_url: https://mainnet.optimism.io
+    symbol: ETH
+    coingecko_id: ethereum
+  matic:
+    chain_id: 137
+    rpc_url: https://polygon-bor-rpc.publicnode.com
+    # Polygon's gas token is POL, not MATIC
+    symbol: POL
+    coingecko_id: polygon-ecosystem-token
+  sepolia:
+    chain_id: 11155111
+    rpc_url: https://ethereum-sepolia-rpc.publicnode.com
+    # testnet ETH has no meaningful price, so no coingecko_id
+    symbol: ETH
+  sonic:
+    chain_id: 146
+    rpc_url: https://rpc.soniclabs.com
+    symbol: S
+    coingecko_id: sonic-3
+  unichain:
+    chain_id: 130
+    rpc_url: https://mainnet.unichain.org
+    symbol: ETH
+    coingecko_id: ethereum
+  zksync:
+    chain_id: 324
+    rpc_url: https://mainnet.era.zksync.io
+    symbol: ETH
+    coingecko_id: ethereum
+    # not covered by Etherscan v2; its own API needs no key
+    explorer_api: https://block-explorer-api.mainnet.zksync.io/api
+  robinhood:
+    chain_id: 4663
+    rpc_url: https://rpc.mainnet.chain.robinhood.com
+    symbol: ETH
+    coingecko_id: ethereum

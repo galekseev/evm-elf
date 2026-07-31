@@ -4,14 +4,9 @@
 
 import chalk from 'chalk';
 import { Contract, isAddress } from 'ethers';
-import type { ContractOwnerResult, RpcProfile, WalletOptions } from '../../types.js';
+import type { ContractOwnerResult, WalletOptions } from '../../types.js';
 import { loadEnv } from '../../lib/env.js';
-import {
-  loadProfile,
-  loadKnownChains,
-  resolveChain,
-  selectChains,
-} from '../../lib/chains.js';
+import { loadProfile, resolveChain, selectChains } from '../../lib/chains.js';
 import { createProvider } from '../../lib/rpc.js';
 import { OWNABLE_ABI, hasCode } from '../../lib/proxy.js';
 
@@ -23,17 +18,12 @@ export async function ownerCommand(address: string, options: WalletOptions): Pro
     process.exit(1);
   }
 
-  const knownChains = await loadKnownChains();
-  let profile: RpcProfile | undefined;
-  if (options.profile) {
-    profile = await loadProfile(options.profile);
-  }
-
-  const chains = selectChains(options.chain, options.excludeChain, profile, knownChains);
+  const profile = await loadProfile(options.profile);
+  const chains = selectChains(options.chain, options.excludeChain, profile);
   const results: ContractOwnerResult[] = [];
 
   for (const chain of chains) {
-    const resolved = resolveChain(chain, profile, knownChains);
+    const resolved = resolveChain(chain, profile);
     if (!resolved.endpoint) {
       results.push({ chain, chainId: resolved.chainId, address, error: resolved.error });
       continue;

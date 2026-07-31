@@ -7,11 +7,10 @@ import chalk from 'chalk';
 import { Contract, Wallet, getAddress, isAddress } from 'ethers';
 import type {
   ContractTransferOwnershipOptions,
-  RpcProfile,
   TransferOwnershipResult,
 } from '../../types.js';
 import { loadEnv } from '../../lib/env.js';
-import { loadProfile, loadKnownChains, resolveChain } from '../../lib/chains.js';
+import { loadProfile, resolveChain } from '../../lib/chains.js';
 import { createProvider } from '../../lib/rpc.js';
 import { resolvePrivateKey } from '../../lib/wallet.js';
 import { OWNABLE_ABI, hasCode, revertReason } from '../../lib/proxy.js';
@@ -46,13 +45,8 @@ export async function transferOwnershipCommand(
     process.exit(1);
   }
 
-  const knownChains = await loadKnownChains();
-  let profile: RpcProfile | undefined;
-  if (options.profile) {
-    profile = await loadProfile(options.profile);
-  }
-
-  const resolved = resolveChain(chain, profile, knownChains);
+  const profile = await loadProfile(options.profile);
+  const resolved = resolveChain(chain, profile);
   if (!resolved.endpoint) {
     console.error(chalk.red(`${chain}: ${resolved.error}`));
     process.exit(1);

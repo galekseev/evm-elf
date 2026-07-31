@@ -3,8 +3,7 @@
  * against the public simple/price endpoint; no API key required.
  */
 
-import { getNativeToken } from '../native-token.js';
-import type { PriceSource } from './types.js';
+import type { PriceChain, PriceSource } from './types.js';
 
 const SIMPLE_PRICE_API = 'https://api.coingecko.com/api/v3/simple/price';
 const REQUEST_TIMEOUT_MS = 5000;
@@ -29,13 +28,12 @@ async function fetchSimplePrice(coinIds: string[]): Promise<SimplePriceResponse 
 }
 
 export function toPriceMap(
-  chainIds: number[],
+  chains: PriceChain[],
   body: SimplePriceResponse | null
 ): Map<number, number | null> {
   const prices = new Map<number, number | null>();
-  for (const chainId of chainIds) {
-    const coinId = getNativeToken(chainId)?.coingeckoId;
-    const usd = coinId ? body?.[coinId]?.usd : undefined;
+  for (const { chainId, coingeckoId } of chains) {
+    const usd = coingeckoId ? body?.[coingeckoId]?.usd : undefined;
     prices.set(chainId, typeof usd === 'number' && Number.isFinite(usd) ? usd : null);
   }
   return prices;
@@ -44,17 +42,13 @@ export function toPriceMap(
 export class CoinGeckoPriceSource implements PriceSource {
   readonly name = 'coingecko';
 
-  async getNativeUsdPrices(chainIds: number[]): Promise<Map<number, number | null>> {
-    const coinIds = new Set<string>();
-    for (const chainId of chainIds) {
-      const coinId = getNativeToken(chainId)?.coingeckoId;
-      if (coinId) {
-        coinIds.add(coinId);
-      }
-    }
+  async getNativeUsdPrices(chains: PriceChain[]): Promise<Map<number, number | null>> {
+    const coinIds = new Set(
+      chains.map((chain) => chain.coingeckoId).filter((id): id is string => !!id)
+    );
     if (coinIds.size === 0) {
-      return toPriceMap(chainIds, null);
+      return toPriceMap(chains, null);
     }
-    return toPriceMap(chainIds, await fetchSimplePrice([...coinIds]));
+    return toPriceMap(chains, await fetchSimplePrice([...coinIds]));
   }
 }

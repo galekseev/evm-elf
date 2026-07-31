@@ -11,14 +11,13 @@ import type {
   ContractProxyInfoOptions,
   ProxyAccountInfo,
   ProxyInfoResult,
-  RpcProfile,
 } from '../../types.js';
 import { loadEnv } from '../../lib/env.js';
 import {
   loadProfile,
-  loadKnownChains,
   resolveChain,
   selectChains,
+  type ResolvedChain,
 } from '../../lib/chains.js';
 import { createProvider } from '../../lib/rpc.js';
 import {
@@ -41,7 +40,12 @@ import {
   looksLikeProxyAdmin,
   parseMinimalProxy,
 } from '../../lib/proxy.js';
-import { getContractCreation, getContractInfo, getLogsByTopic } from '../../lib/explorer.js';
+import {
+  getContractCreation,
+  getContractInfo,
+  getLogsByTopic,
+  type ExplorerTarget,
+} from '../../lib/explorer.js';
 
 async function tryOwner(provider: JsonRpcProvider, address: string): Promise<string | undefined> {
   try {
@@ -89,10 +93,10 @@ async function checkErc1822(
  */
 async function findManagedProxy(
   provider: JsonRpcProvider,
-  chainId: number,
+  explorer: ExplorerTarget,
   adminAddress: string
 ): Promise<{ proxy: string; implementation?: string } | null> {
-  const creation = await getContractCreation(chainId, adminAddress);
+  const creation = await getContractCreation(explorer, adminAddress);
   if (!creation) {
     return null;
   }
@@ -180,7 +184,7 @@ const PROXY_TYPES_WITH_STATE = new Set(['transparent', 'uups', 'beacon', 'minima
  */
 async function enrichFull(
   provider: JsonRpcProvider,
-  chainId: number,
+  explorer: ExplorerTarget,
   result: ProxyInfoResult
 ): Promise<void> {
   const type = result.proxyType ?? 'none';
@@ -219,7 +223,7 @@ async function enrichFull(
   if (result.implementation && result.implementationHasCode) {
     const implCode = await provider.getCode(result.implementation);
     result.implementationCodeHash = keccak256(implCode);
-    const info = await getContractInfo(chainId, result.implementation);
+    const info = await getContractInfo(explorer, result.implementation);
     if (info) {
       result.implementationName = info.name;
       result.implementationVerified = info.verified;
@@ -230,7 +234,7 @@ async function enrichFull(
   const upgradeSource =
     type === 'beacon' ? result.beacon : type === 'beacon-contract' ? result.address : isProxy ? result.address : undefined;
   if (upgradeSource && type !== 'minimal') {
-    const logs = await getLogsByTopic(chainId, upgradeSource, UPGRADED_TOPIC);
+    const logs = await getLogsByTopic(explorer, upgradeSource, UPGRADED_TOPIC);
     if (logs) {
       result.upgradeHistory = logs
         .filter((log) => log.topics.length > 1)
@@ -243,7 +247,7 @@ async function enrichFull(
   }
 
   // Creation info (deployer, tx, date)
-  const creation = await getContractCreation(chainId, result.address);
+  const creation = await getContractCreation(explorer, result.address);
   if (creation) {
     result.createdBy = creation.creator;
     result.creationTxHash = creation.txHash;
@@ -282,12 +286,15 @@ type InspectMode = 'short' | 'normal' | 'full';
  */
 async function inspectProxy(
   provider: JsonRpcProvider,
-  chain: string,
-  chainId: number,
+  resolved: ResolvedChain,
   address: string,
   mode: InspectMode
 ): Promise<ProxyInfoResult> {
-  const result: ProxyInfoResult = { chain, chainId, address };
+  const result: ProxyInfoResult = { chain: resolved.chain, chainId: resolved.chainId, address };
+  const explorer: ExplorerTarget = {
+    chainId: resolved.chainId,
+    ...(resolved.explorerApi ? { apiUrl: resolved.explorerApi } : {}),
+  };
   const light = mode === 'short';
   const full = mode === 'full';
 
@@ -310,7 +317,7 @@ async function inspectProxy(
       result.proxyOwner = await tryOwner(provider, address);
     }
     if (full) {
-      await enrichFull(provider, chainId, result);
+      await enrichFull(provider, explorer, result);
     }
     return result;
   }
@@ -370,7 +377,7 @@ async function inspectProxy(
       result.upgradeInterfaceVersion = await tryUpgradeInterfaceVersion(provider, address);
     }
     if (!light) {
-      const managed = await findManagedProxy(provider, chainId, address);
+      const managed = await findManagedProxy(provider, explorer, address);
       if (managed) {
         result.managedProxy = managed.proxy;
         result.managedProxyImplementation = managed.implementation;
@@ -398,7 +405,7 @@ async function inspectProxy(
     result.proxyOwner = await tryOwner(provider, address);
   }
   if (full) {
-    await enrichFull(provider, chainId, result);
+    await enrichFull(provider, explorer, result);
   }
   return result;
 }
@@ -652,17 +659,12 @@ export async function proxyInfoCommand(
   }
   const mode: InspectMode = options.short ? 'short' : options.full ? 'full' : 'normal';
 
-  const knownChains = await loadKnownChains();
-  let profile: RpcProfile | undefined;
-  if (options.profile) {
-    profile = await loadProfile(options.profile);
-  }
-
-  const chains = selectChains(options.chain, options.excludeChain, profile, knownChains);
+  const profile = await loadProfile(options.profile);
+  const chains = selectChains(options.chain, options.excludeChain, profile);
   const results: ProxyInfoResult[] = [];
 
   for (const chain of chains) {
-    const resolved = resolveChain(chain, profile, knownChains);
+    const resolved = resolveChain(chain, profile);
     if (!resolved.endpoint) {
       results.push({ chain, chainId: resolved.chainId, address, error: resolved.error });
       continue;
@@ -670,7 +672,7 @@ export async function proxyInfoCommand(
 
     const provider = createProvider(resolved.endpoint, resolved.chainId);
     try {
-      results.push(await inspectProxy(provider, chain, resolved.chainId, address, mode));
+      results.push(await inspectProxy(provider, resolved, address, mode));
     } catch (err) {
       results.push({ chain, chainId: resolved.chainId, address, error: (err as Error).message });
     } finally {
