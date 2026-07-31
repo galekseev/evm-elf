@@ -1,0 +1,60 @@
+{
+  "name": "@camoseed/evm-elf",
+  "version": "0.1.0",
+  "description": "Multi-chain EVM CLI for wallets, ownership and proxies — reads fan out across all chains, writes are dry-run by default",
+  "keywords": [
+    "evm",
+    "ethereum",
+    "cli",
+    "wallet",
+    "multichain",
+    "proxy",
+    "ethers"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/galekseev/evm-elf.git"
+  },
+  "homepage": "https://github.com/galekseev/evm-elf#readme",
+  "bugs": {
+    "url": "https://github.com/galekseev/evm-elf/issues"
+  },
+  "type": "module",
+  "bin": {
+    "evm": "dist/index.js"
+  },
+  "files": [
+    "dist",
+    "config"
+  ],
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc",
+    "evm": "tsx index.ts",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "chalk": "^5.3.0",
+    "commander": "^12.1.0",
+    "dotenv": "^16.4.5",
+    "ethers": "^6.13.0",
+    "yaml": "^2.8.3"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.18.0",
+    "@types/node": "^22.10.7",
+    "@typescript-eslint/eslint-plugin": "^8.21.0",
+    "@typescript-eslint/parser": "^8.21.0",
+    "eslint": "^9.18.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3"
+  }
+}
