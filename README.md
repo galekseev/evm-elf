@@ -27,19 +27,34 @@ Requires Node.js 22+. The install compiles from source, so no published package 
 ## Quick start
 
 ```bash
-evm wallet balance 0x72B4736F6e482DB07C4F3d7d3b90A24b2FedBe7a           # balances on every chain
+evm wallet balance 0xef3c29bc05a77B266A76f2cEa11d8b8886342e8a           # balances on every chain
 evm contract proxy-info 0x4200000000000000000000000000000000000010 -s   # where is it, and what is it
 evm chain set base https://base.example/rpc                             # your endpoint instead of the public one
 ```
 
 The first run creates `~/.config/evm-elf/profiles/default.yaml` from the profile bundled with the package: 14 chains pointed at their own public endpoints, which is enough to try things out and rate-limited under load. Every command supports `--help`.
 
+## Documentation
+
+This README is the overview. The [docs](docs/) directory covers setup and use in depth:
+
+- [Installation](docs/installation.md) — requirements, the global install, upgrades, and running from a checkout
+- [Getting started](docs/getting-started.md) — a ten-minute walkthrough from the first fan-out read to the first dry run
+- [Configuration](docs/configuration.md) — profiles, every chain field, environment variables, and prices
+- [Private keys](docs/private-keys.md) — passing a signing key without leaving it in your shell history
+- [Wallet commands](docs/wallet-commands.md) and [Contract commands](docs/contract-commands.md) — every argument, option, output, and exit code
+- [Profile commands](docs/profile-commands.md) — creating, copying, and switching between profiles
+- [Chain commands](docs/chain-commands.md) — adding a chain to a profile and pointing it at your own endpoint
+- [Explorer commands](docs/explorer-commands.md) — the block explorer API keys that `proxy-info --full` depends on
+- [Troubleshooting](docs/troubleshooting.md) — the error messages, with a cause and a fix for each
+
 ## Contents
 
+- [Documentation](#documentation) — the full guides, in `docs/`
 - [Options](#options) — the flags every command shares
 - [Wallet commands](#wallet-commands): [`balance`](#balance-wallet), [`send`](#send-to), [`set-nonce`](#set-nonce-target), [`generate`](#generate), [`address`](#address-private-key)
 - [Contract commands](#contract-commands): [`owner`](#owner-address), [`proxy-info`](#proxy-info-address), [`transfer-ownership`](#transfer-ownership-address-newowner), [`proxy-upgrade`](#proxy-upgrade-proxy-newimplementation), [`code`](#code-address)
-- [Configuration](#configuration): [the profile file](#the-profile-file), [`evm profile`](#profile-commands), [`evm chain`](#chain-commands), [chain selection](#chain-selection), [private keys](#private-keys), [environment variables](#environment-variables), [prices](#prices)
+- [Configuration](#configuration): [the profile file](#the-profile-file), [`evm profile`](#profile-commands), [`evm chain`](#chain-commands), [`evm explorer`](#explorer-commands), [chain selection](#chain-selection), [private keys](#private-keys), [environment variables](#environment-variables), [prices](#prices)
 - [Requirements](#requirements), [Development](#development), [License](#license)
 
 ## Options
@@ -55,7 +70,7 @@ Shared by the commands that reach a chain:
     --json                     Print JSON instead of a table
 ```
 
-`evm --help` lists the four command groups. `evm <group> <command> --help` documents a single command, with examples of its own.
+`evm --help` lists the five command groups. `evm <group> <command> --help` documents a single command, with examples of its own.
 
 ## Wallet commands
 
@@ -66,11 +81,11 @@ Balances, native-token transfers and nonce management. The reads fan out across 
 Native balance, USD value and pending nonce across chains, with a total. Accepts an address, a private key, or the name of an env var holding either.
 
 ```bash
-evm wallet balance 0x72B4736F6e482DB07C4F3d7d3b90A24b2FedBe7a
+evm wallet balance 0xef3c29bc05a77B266A76f2cEa11d8b8886342e8a
 ```
 
 ```
-Wallet Balance: 0x72B4736F6e482DB07C4F3d7d3b90A24b2FedBe7a
+Wallet Balance: 0xef3c29bc05a77B266A76f2cEa11d8b8886342e8a
 
 Chain           Chain ID   Balance (Native)          Token    Value (USD)      Nonce      Status
 ────────────────────────────────────────────────────────────────────────────────────────────────
@@ -210,7 +225,14 @@ evm contract proxy-info 0x4200...0010 -c base --full   # extra diagnostics
 - implementation codehash plus a cross-chain comparison that warns when bytecode differs between chains
 - verified implementation name, upgrade history (`Upgraded` events) and creation info (deployer, date, transaction)
 
-The last group and the ProxyAdmin trace read from a block explorer rather than the RPC. That is the Etherscan v2 API, which rejects requests without `ETHERSCAN_API_KEY`, or the chain's own `explorer_api` from the profile, which needs no key — zkSync Era ships one. Without either, those fields are left out silently.
+The last group and the ProxyAdmin trace read from a block explorer rather than the RPC. Sources are tried in order — the chain's own `explorer_api`, then Etherscan, then Blockscout — and the API keys come from the `explorers` section of the profile:
+
+```bash
+evm explorer set etherscan '${ETHERSCAN_API_KEY}'   # checks the key before storing it
+evm explorer list                                   # what is configured, keys masked
+```
+
+With nothing configured, those fields are left out and the run says so once on stderr. See [Explorer commands](docs/explorer-commands.md).
 
 ### `transfer-ownership <address> <newOwner>`
 
@@ -247,7 +269,7 @@ Everything the CLI knows about a chain lives in one file, a profile:
 
 | What | Where |
 |---|---|
-| Chains: RPC URL, HTTP headers, token and explorer metadata | `~/.config/evm-elf/profiles/<name>.yaml` |
+| Chains: RPC URL, HTTP headers, token and explorer metadata, plus explorer API keys | `~/.config/evm-elf/profiles/<name>.yaml` |
 | Which profile is used | `-p <name>`, else `$EVM_ELF_PROFILE`, else `evm profile set-default`, else `default` |
 | Values referenced as `${VAR}` | `./.env`, then `~/.config/evm-elf/.env` |
 
@@ -257,6 +279,9 @@ A profile is also the chain list: the chains it names are the chains every read 
 
 ```yaml
 # ~/.config/evm-elf/profiles/default.yaml
+explorers:
+  etherscan: ${ETHERSCAN_API_KEY}
+
 chains:
   base:
     chain_id: 8453
@@ -278,7 +303,9 @@ chains:
     explorer_api: https://block-explorer-api.mainnet.zksync.io/api
 ```
 
-`chain_id` and `rpc_url` are required per chain. The rest is what an RPC cannot tell you: `symbol` and `coingecko_id` fill the token and USD columns of `wallet balance` (no `coingecko_id`, no price), and `explorer_api` overrides Etherscan v2 for a chain it does not cover. `${VAR}` is resolved from the environment, which keeps keys out of the file, and `rpc_url` also accepts the `<URL>|<AUTH_KEY>` form as shorthand for the `auth-key` header.
+`chain_id` and `rpc_url` are required per chain. The rest is what an RPC cannot tell you: `symbol` and `coingecko_id` fill the token and USD columns of `wallet balance` (no `coingecko_id`, no price), and `explorer_api` names an explorer for a chain the shared sources do not cover. `${VAR}` is resolved from the environment, which keeps keys out of the file, and `rpc_url` also accepts the `<URL>|<AUTH_KEY>` form as shorthand for the `auth-key` header.
+
+The `explorers` section holds one API key per source, since a single key covers every chain that source supports. Edit it with `evm explorer set`, which checks the key before storing it.
 
 Use several profiles for several projects — a profile doubles as "the chains this project uses":
 
@@ -319,6 +346,19 @@ Metadata the entry does not have yet — `symbol`, `coingecko_id`, `explorer_api
 
 `chain list` masks header values, since one may be a literal key; `--reveal` prints them. All three take `-p` to work on another profile, and an edited file is written with owner-only permissions.
 
+### Explorer commands
+
+`evm explorer` manages the block explorer API keys that `contract proxy-info --full` uses. One key covers every chain a source supports, so there is no per-chain setting:
+
+```bash
+evm explorer list                                     # what is configured, keys masked
+evm explorer set etherscan '${ETHERSCAN_API_KEY}'     # keep the key in .env
+evm explorer set blockscout YourBlockscoutKey         # or store it in the profile
+evm explorer remove blockscout
+```
+
+`set` asks the explorer whether it accepts the key before writing it, the way `chain set` reads the chain id from the endpoint; `--no-verify` skips that, which is what you want when writing a profile for another machine. Sources are tried in order: a chain's own `explorer_api`, then `etherscan`, then `blockscout`. With none configured, the explorer-backed fields are left out and `proxy-info` says so once on stderr.
+
 ### Chain selection
 
 1. `-c, --chain` — explicit comma-separated list
@@ -345,7 +385,7 @@ evm wallet send 0x5d0F...95eB --value 0.01 --private-key DEPLOYER_PK -c base --e
 |---|---|
 | `EVM_ELF_PROFILE` | Profile to use when `-p` is not given; wins over `evm profile set-default` |
 | `EVM_ELF_CONFIG_DIR` | Where profiles and the user `.env` live (default: `$XDG_CONFIG_HOME/evm-elf`, else `~/.config/evm-elf`) |
-| `ETHERSCAN_API_KEY` | Etherscan v2 key for the explorer lookups in `proxy-info`; without it Etherscan returns nothing and those fields stay empty |
+| `ETHERSCAN_API_KEY` | Referenced by the bundled profile as `explorers.etherscan`, not read by the CLI directly. Exporting it without that reference does nothing |
 | `EVM_PRICE_SOURCE` | `coingecko` (default) or `none`, see [Prices](#prices) |
 | `COINGECKO_API_KEY` | CoinGecko demo key; the public endpoint works without one |
 
@@ -366,7 +406,7 @@ The lookup is best-effort: a failing, rate-limited or slow source (5s timeout) l
 
 - Node.js 22+ (the `engines` field of [package.json](package.json))
 - An RPC endpoint per chain. The bundled profile ships the chains' own public endpoints; point the ones you use at your own provider with `evm chain set`.
-- `ETHERSCAN_API_KEY` for the explorer-backed fields of `proxy-info`. Nothing else needs an API key.
+- An explorer API key for the explorer-backed fields of `proxy-info`, stored with `evm explorer set`. Nothing else needs an API key.
 
 ## Development
 
