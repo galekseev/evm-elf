@@ -2,32 +2,32 @@
 
 [Documentation](README.md) › Installation
 
-This page installs the `evm` command globally, confirms it runs, and shows how to upgrade, uninstall, or run it from a checkout instead. On a machine that already has Node.js 22, the install takes about a minute.
+This page installs the `evm` command globally, confirms it runs, and shows how to upgrade, uninstall, or run it from a checkout instead. On a machine that already has Node.js 22, the install takes a few seconds.
 
 ## Requirements
 
-Check these before installing, because npm builds the package from source during the install.
+Check these before installing.
 
 | Requirement | Why | Check it with |
 | --- | --- | --- |
 | Node.js 22 or newer | The `engines` field of [package.json](../package.json) sets this floor | `node --version` |
-| npm | Runs the install and the TypeScript build | `npm --version` |
-| git | npm clones the repository to build it | `git --version` |
+| npm | Installs the package and links the `evm` command | `npm --version` |
+| git | Only for installing from the repository, which builds from source | `git --version` |
 
 You don't need an API key to start. The profile that ships with the package points 14 chains at their own public RPC endpoints, which is enough to try every read command. See [Configuration](configuration.md) for pointing chains at your own provider.
 
 ## Install the CLI globally
 
-Install from the repository, which compiles the TypeScript sources and links the `evm` binary:
-
-```bash
-npm install -g github:galekseev/evm-elf
-```
-
-When the package is available on the npm registry, this installs the same binary:
+Install from the npm registry. The package ships compiled JavaScript, so npm only links the `evm` command:
 
 ```bash
 npm install -g @camoseed/evm-elf
+```
+
+To install the current state of the repository instead, point npm at git. That compiles the TypeScript sources during the install, so it needs git and takes longer:
+
+```bash
+npm install -g github:galekseev/evm-elf
 ```
 
 ## Verify the install
@@ -36,7 +36,7 @@ Print the version to confirm the binary is on your `PATH`:
 
 ```bash
 evm --version
-# prints the installed version, for example: 0.2.0
+# prints the installed version, for example: 1.0.0
 ```
 
 Then list the chains the CLI knows about. This is also the command that creates your configuration:
@@ -55,10 +55,10 @@ The table that follows lists 14 chains with their chain IDs and RPC URLs. If it 
 
 ## Upgrade to a newer version
 
-Re-run the install command. npm replaces the global install with the current state of the repository:
+Re-run the install command. npm replaces the global install with the latest published version:
 
 ```bash
-npm install -g github:galekseev/evm-elf
+npm install -g @camoseed/evm-elf@latest
 ```
 
 Your profiles live outside the package, in `~/.config/evm-elf`, so an upgrade never touches them. New chains added to the bundled profile don't reach an existing `default.yaml`, since the CLI only copies that file when it's missing. To pick up the current bundled chain list, see [`evm profile create`](profile-commands.md#evm-profile-create-name).

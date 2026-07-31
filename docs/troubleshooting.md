@@ -48,7 +48,7 @@ Node 22 is the floor set by the `engines` field of `package.json`. See [Requirem
 The installed package is incomplete, so the CLI can't find the profile it copies on first use. Reinstall it:
 
 ```bash
-npm install -g github:galekseev/evm-elf
+npm install -g @camoseed/evm-elf
 ```
 
 ## Fix profile errors

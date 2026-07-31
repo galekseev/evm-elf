@@ -19,10 +19,10 @@ Working on a multichain deployment means running the same operation on every cha
 ## Install
 
 ```bash
-npm install -g github:galekseev/evm-elf
+npm install -g @camoseed/evm-elf
 ```
 
-Requires Node.js 22+. The install compiles from source, so no published package is needed; once `@camoseed/evm-elf` is on npm, `npm install -g @camoseed/evm-elf` gets the same binary.
+Requires Node.js 22+. To build from the current state of the repository instead, install from git: `npm install -g github:galekseev/evm-elf`.
 
 ## Quick start
 
