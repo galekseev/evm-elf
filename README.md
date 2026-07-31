@@ -411,12 +411,14 @@ The lookup is best-effort: a failing, rate-limited or slow source (5s timeout) l
 ## Development
 
 ```bash
-yarn install
-yarn evm wallet balance 0x72B4...Be7a   # run from source via tsx
-yarn build                              # tsc -> dist/
-yarn typecheck
-yarn lint
+npm install
+npm run evm -- wallet balance 0x72B4...Be7a   # run from source via tsx
+npm run build                                 # tsc -> dist/
+npm run typecheck
+npm run lint
 ```
+
+`npm install` also builds, since `prepare` runs `tsc`. Pass CLI arguments after `--`, or npm reads them as its own.
 
 ## License
 

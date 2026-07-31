@@ -80,11 +80,11 @@ If you want to read or change the source, run the CLI through `tsx` instead of i
 ```bash
 git clone https://github.com/galekseev/evm-elf.git
 cd evm-elf
-yarn install
-yarn evm wallet balance 0xef3c29bc05a77B266A76f2cEa11d8b8886342e8a
+npm install
+npm run evm -- wallet balance 0xef3c29bc05a77B266A76f2cEa11d8b8886342e8a
 ```
 
-`yarn evm` runs `index.ts` directly, so every example in this documentation works with `yarn evm` in place of `evm`.
+`npm run evm` runs `index.ts` directly, so every example in this documentation works with `npm run evm --` in place of `evm`. The `--` separates the CLI's arguments from npm's own, and leaving it out means `evm`'s flags never reach it.
 
 > [!NOTE]
 > A checkout reads the same profiles as a global install, so both see the same chains and RPC URLs. To keep an experiment separate, set `EVM_ELF_CONFIG_DIR` to a scratch directory, as described in [Configuration](configuration.md#environment-variables).

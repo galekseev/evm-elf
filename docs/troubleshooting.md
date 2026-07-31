@@ -24,10 +24,10 @@ These appear before the CLI reads any configuration.
 
 ### `evm: command not found`
 
-The global install finished but its binary directory isn't on your `PATH`. Print the directory npm installs into and check whether your shell searches it:
+The global install finished but its binary directory isn't on your `PATH`. Print the prefix npm installs into, which holds the binary in its `bin` subdirectory, and check whether your shell searches it:
 
 ```bash
-npm bin -g
+npm prefix -g   # for example /usr/local, so the binary is /usr/local/bin/evm
 echo $PATH
 ```
 
