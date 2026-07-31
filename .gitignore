@@ -1,5 +1,6 @@
 # Cursor
 .cursor
+.agents
 
 # Dependencies
 node_modules/

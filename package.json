@@ -36,6 +36,7 @@
   },
   "scripts": {
     "build": "tsc",
+    "prepare": "npm run build",
     "evm": "tsx index.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",

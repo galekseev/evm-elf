@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "skills": {
+    "creating-pr": {
+      "source": "spencerpauly/awesome-cursor-skills",
+      "sourceType": "github",
+      "skillPath": "resources/creating-pr/SKILL.md",
+      "computedHash": "e6adeaebb3bc0070a16747b31f0801c63f3896c4cac2fff7292ff7914f056df2"
+    },
+    "doc-coauthoring": {
+      "source": "anthropics/skills",
+      "sourceType": "github",
+      "skillPath": "skills/doc-coauthoring/SKILL.md",
+      "computedHash": "b964e4c3ffe13f66f76dd7919073e60c7aec622cd8a8363bb36323188100cf8e"
+    },
+    "docs-writing": {
+      "source": "mblode/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/docs-writing/SKILL.md",
+      "computedHash": "2141cafcca55799f9eefaffc3f80db55d1751282a2141a4aee75187da28a1e66"
+    },
+    "fixing-broken-links": {
+      "source": "spencerpauly/awesome-cursor-skills",
+      "sourceType": "github",
+      "skillPath": "resources/fixing-broken-links/SKILL.md",
+      "computedHash": "4d0859d9077f41f26533a3229d9320499f7ad3b632d9bc674fcf1647ed92d2a6"
+    },
+    "readme-creator": {
+      "source": "mblode/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/readme-creator/SKILL.md",
+      "computedHash": "1b9895e6256d19a6fcd4c15f69edb911cb19860f29a7d77c95b6891d7a35a05d"
+    },
+    "verifying-markdown-formatting": {
+      "source": "spencerpauly/awesome-cursor-skills",
+      "sourceType": "github",
+      "skillPath": "resources/verifying-markdown-formatting/SKILL.md",
+      "computedHash": "fc4183387e6d8a7202e1693607f9faa29ecbf166af3bcd8c672dbf34bd4100af"
+    },
+    "writing-commit-messages": {
+      "source": "spencerpauly/awesome-cursor-skills",
+      "sourceType": "github",
+      "skillPath": "resources/writing-commit-messages/SKILL.md",
+      "computedHash": "a995c4fc9127a677b3ddc6cbeba0fdc981d6da4d7fa84d63de412ba3efeeeb29"
+    }
+  }
+}
