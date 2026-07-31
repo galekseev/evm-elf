@@ -1,6 +1,6 @@
 {
   "name": "@camoseed/evm-elf",
-  "version": "0.2.0",
+  "version": "1.0.0",
   "description": "Multi-chain EVM CLI for wallets and contracts",
   "keywords": [
     "evm",
