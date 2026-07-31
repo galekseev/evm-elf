@@ -1,7 +1,7 @@
 {
   "name": "@camoseed/evm-elf",
   "version": "0.1.0",
-  "description": "Multi-chain EVM CLI for wallets, ownership and proxies — reads fan out across all chains, writes are dry-run by default",
+  "description": "Multi-chain EVM CLI for wallets and contracts",
   "keywords": [
     "evm",
     "ethereum",
