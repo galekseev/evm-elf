@@ -6,7 +6,7 @@
  * so it behaves the same whether it runs from source or from a global install.
  */
 
-import { existsSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
 import { homedir } from 'os';
 import { dirname, resolve } from 'path';
 import { fileURLToPath } from 'url';
@@ -47,12 +47,40 @@ export const USER_CONFIG_DIR = process.env.EVM_ELF_CONFIG_DIR
 
 export const PROFILES_DIR = resolve(USER_CONFIG_DIR, 'profiles');
 
-/** Profile used when -p is not given; seeded from the bundled one on first use. */
+/** Holds the name picked by `evm profile set-default` */
+export const DEFAULT_POINTER_PATH = resolve(PROFILES_DIR, '.default');
+
+/** Profile used when nothing else picks one; seeded from the bundled one on first use. */
 export const DEFAULT_PROFILE_NAME = 'default';
 
-/** The profile to use when -p is not given. */
+export interface DefaultProfile {
+  name: string;
+  source: 'env' | 'pointer' | 'builtin';
+}
+
+/**
+ * The profile to use when -p is not given: $EVM_ELF_PROFILE wins over the
+ * pointer written by `evm profile set-default`, which wins over the built-in
+ * name. Reading the pointer is best-effort, so an unreadable one is ignored
+ * rather than breaking every command.
+ */
+export function resolveDefaultProfile(): DefaultProfile {
+  if (process.env.EVM_ELF_PROFILE) {
+    return { name: process.env.EVM_ELF_PROFILE, source: 'env' };
+  }
+  try {
+    const pointed = readFileSync(DEFAULT_POINTER_PATH, 'utf-8').trim();
+    if (pointed) {
+      return { name: pointed, source: 'pointer' };
+    }
+  } catch {
+    // no pointer yet
+  }
+  return { name: DEFAULT_PROFILE_NAME, source: 'builtin' };
+}
+
 export function defaultProfileName(): string {
-  return process.env.EVM_ELF_PROFILE || DEFAULT_PROFILE_NAME;
+  return resolveDefaultProfile().name;
 }
 
 let envLoaded = false;

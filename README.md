@@ -22,7 +22,7 @@ Everything the CLI knows about a chain lives in one file, a profile:
 | What | Where |
 |---|---|
 | Chains: RPC URL, HTTP headers, token and explorer metadata | `~/.config/evm-elf/profiles/<name>.yaml` |
-| Which profile is used | `-p <name>`, else `$EVM_ELF_PROFILE`, else `default` |
+| Which profile is used | `-p <name>`, else `$EVM_ELF_PROFILE`, else `evm profile set-default`, else `default` |
 | Values referenced as `${VAR}` | `./.env`, then `~/.config/evm-elf/.env` |
 
 A profile is also the chain list: the chains it names are the chains every read fans out across. The `default` profile is created on first use from the one bundled with the package ([config/default-profile.yaml](config/default-profile.yaml)) — 14 chains pointed at their own public endpoints, which is enough to try things out and rate-limited under load.
@@ -57,6 +57,20 @@ Use several profiles for several projects — a profile doubles as "the chains t
 ```bash
 evm wallet balance 0x72B4...Be7a -p myproject
 ```
+
+### Profile commands
+
+```bash
+evm profile list                          # what exists, and which one is the default
+evm profile create myproject              # a copy of the bundled profile
+evm profile create myproject --empty      # no chains, fill it with evm chain set
+evm profile clone default backup          # copy an existing one, comments included
+evm profile clone ./team-chains.yaml team # a file from a repo becomes a profile
+evm profile set-default myproject         # used whenever -p is not given
+evm profile remove myproject
+```
+
+`set-default` writes the name to `~/.config/evm-elf/profiles/.default`, so it survives across shells; `$EVM_ELF_PROFILE` still wins over it and `-p` wins over both, and `set-default` says so when the variable is set. `evm profile set-default default` goes back to the bundled profile. `remove` refuses to delete the profile currently in use unless you pass `--force`, and clearing it that way also resets the default.
 
 ### Chain commands
 

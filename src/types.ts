@@ -289,3 +289,30 @@ export interface ChainRemoveOptions {
   profile?: string;
   json?: boolean;
 }
+
+// ============================================================================
+// Profile options
+// ============================================================================
+
+export interface ProfileListOptions {
+  json?: boolean;
+}
+
+export interface ProfileCreateOptions {
+  empty?: boolean;          // start from an empty chain list instead of the bundled profile
+  json?: boolean;
+}
+
+export interface ProfileCloneOptions {
+  force?: boolean;          // overwrite the target profile
+  json?: boolean;
+}
+
+export interface ProfileRemoveOptions {
+  force?: boolean;          // remove even when it is the default profile
+  json?: boolean;
+}
+
+export interface ProfileSetDefaultOptions {
+  json?: boolean;
+}

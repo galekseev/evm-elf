@@ -1,37 +1,19 @@
 /**
- * Reading and editing profile files.
+ * Reading and editing the chains inside one profile file.
  *
  * Edits go through the YAML document API rather than a parse/stringify cycle so
  * that comments, key order and formatting of a hand-written profile survive.
+ * Operations on the set of profiles live in profiles.ts.
  */
 
-import { constants, existsSync } from 'fs';
-import { copyFile, mkdir, readFile, rename, unlink, writeFile } from 'fs/promises';
+import { existsSync } from 'fs';
+import { mkdir, readFile, rename, unlink, writeFile } from 'fs/promises';
 import { dirname } from 'path';
-import chalk from 'chalk';
 import { Document, isMap, parseDocument, type YAMLMap } from 'yaml';
 import type { ChainConfig } from '../types.js';
-import { BUNDLED_DEFAULT_PROFILE_PATH } from './env.js';
 
 /** Field order used for chains this CLI writes */
 const FIELD_ORDER = ['chain_id', 'rpc_url', 'symbol', 'coingecko_id', 'explorer_api'] as const;
-
-/**
- * Copy the profile shipped with the package to the user config directory.
- * Never overwrites: a concurrent run that got there first wins.
- */
-export async function ensureDefaultProfile(targetPath: string): Promise<void> {
-  await mkdir(dirname(targetPath), { recursive: true });
-  try {
-    await copyFile(BUNDLED_DEFAULT_PROFILE_PATH, targetPath, constants.COPYFILE_EXCL);
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'EEXIST') {
-      return;
-    }
-    throw error;
-  }
-  console.error(chalk.dim(`Created ${targetPath} from the bundled default profile`));
-}
 
 /**
  * Parse a profile for editing, or start a new document when the file does not

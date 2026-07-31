@@ -14,9 +14,10 @@ import {
   DEFAULT_PROFILE_NAME,
   PROFILES_DIR,
   defaultProfileName,
+  resolveDefaultProfile,
   resolveEnvRefs,
 } from './env.js';
-import { ensureDefaultProfile } from './profile-file.js';
+import { ensureDefaultProfile } from './profiles.js';
 import { parseRpcUrl, type RpcEndpoint } from './rpc.js';
 
 /**
@@ -112,13 +113,31 @@ export async function resolveProfileTarget(
 }
 
 /**
+ * Where a profile nobody asked for by name came from, so that a missing one
+ * points at whatever needs fixing rather than at a name out of nowhere.
+ */
+function missingProfileHint(nameOrPath: string | undefined): string {
+  if (nameOrPath !== undefined) {
+    return '';
+  }
+  const { name, source } = resolveDefaultProfile();
+  if (source === 'pointer') {
+    return ` ('${name}' is the default; change it with: evm profile set-default <name>)`;
+  }
+  if (source === 'env') {
+    return ` ('${name}' comes from $EVM_ELF_PROFILE)`;
+  }
+  return '';
+}
+
+/**
  * Load the profile to read chains from. Only the default profile is created on
  * demand; any other name has to exist.
  */
 export async function loadProfile(nameOrPath?: string): Promise<RpcProfile> {
   const { name, path } = await resolveProfileTarget(nameOrPath);
   if (!existsSync(path)) {
-    throw new Error(`Profile not found: ${path}`);
+    throw new Error(`Profile not found: ${path}${missingProfileHint(nameOrPath)}`);
   }
   return { name, path, chains: await readProfileFile(path) };
 }
