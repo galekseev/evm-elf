@@ -31,6 +31,12 @@
       "skillPath": "skills/readme-creator/SKILL.md",
       "computedHash": "1b9895e6256d19a6fcd4c15f69edb911cb19860f29a7d77c95b6891d7a35a05d"
     },
+    "reverse-engineer": {
+      "source": "TrevorEdris/fellowship-of-the-workflows",
+      "sourceType": "github",
+      "skillPath": "skills/reverse-engineer/SKILL.md",
+      "computedHash": "3143a3d715423af0a1ec32545512a6498aa624e0dc06b00de625b79cc50e5104"
+    },
     "verifying-markdown-formatting": {
       "source": "spencerpauly/awesome-cursor-skills",
       "sourceType": "github",
