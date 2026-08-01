@@ -16,9 +16,9 @@ Everything sits under one configuration directory, outside the installed package
 | `~/.config/evm-elf/profiles/.default` | The profile name chosen by `evm profile set-default` |
 | `~/.config/evm-elf/.env` | Variables available to every run, whatever directory you're in |
 | `./.env` | Variables for runs started in this directory, which wins over the one above |
-| `config/default-profile.yaml` inside the package | The bundled profile, copied to `default.yaml` on first use and never read again |
+| `config/default-profile.yaml` inside the package | The bundled profile: the source of default configuration, never part of your live configuration. Read only when a default is needed — the first-run copy, `evm profile create`, and the metadata `evm chain set` fills in by chain ID |
 
-The directory is `$EVM_ELF_CONFIG_DIR` when set, then `$XDG_CONFIG_HOME/evm-elf`, then `~/.config/evm-elf`. `evm --help` prints the path it resolved.
+The directory is `$EVM_ELF_CONFIG_DIR` when set, then `$XDG_CONFIG_HOME/evm-elf`, then `~/.config/evm-elf`. Both variables are read from the environment only, not from a `.env` file, because the location they choose is where one of those files lives. `evm --help` prints the path it resolved.
 
 The CLI creates `default.yaml` on first use, and only that one. Any other profile must exist before a command names it.
 
@@ -75,6 +75,8 @@ chains:
 ```
 
 Chain names are yours to choose. The bundled profile uses `mainnet`, `matic`, `optimistic`, and `xdai`, but a profile of your own can call them anything, including two entries for the same chain ID pointing at different providers.
+
+Your profile is the only chain list any command reads. The bundled profile is a source of defaults rather than a fallback: nothing merges it into yours at run time, so a chain you remove stays removed and a chain added to the bundle in a later release doesn't appear until you ask for it with `evm profile create`.
 
 ### Chain fields
 
@@ -149,15 +151,22 @@ Two write commands are the exception: `contract transfer-ownership` and `contrac
 
 ## Environment variables
 
-The CLI reads these from the environment, then `./.env`, then `~/.config/evm-elf/.env`. A variable already set is never overwritten, so a value exported in your shell always wins over a file.
+Most of these are read from the environment, then `./.env`, then `~/.config/evm-elf/.env`. A variable already set is never overwritten, so a value exported in your shell always wins over a file.
 
-| Variable | What it does |
-| --- | --- |
-| `EVM_ELF_PROFILE` | Names the profile to use when `-p` isn't given. Wins over `evm profile set-default`. |
-| `EVM_ELF_CONFIG_DIR` | Moves the whole configuration directory, profiles and `.env` included. Useful for an isolated test setup. |
-| `XDG_CONFIG_HOME` | Changes the parent directory when `EVM_ELF_CONFIG_DIR` isn't set. |
-| `EVM_PRICE_SOURCE` | `coingecko` (default) or `none`. See [USD prices](#usd-prices). |
-| `COINGECKO_API_KEY` | Sends a CoinGecko demo key. The public endpoint works without one. |
+Two are the exception, and the `Read from` column marks them: the ones that decide where the configuration directory is have to be known before any `.env` file can be opened, since one of those files lives in that directory. Export them, or pass them for one command.
+
+| Variable | Read from | What it does |
+| --- | --- | --- |
+| `EVM_ELF_PROFILE` | Environment or `.env` | Names the profile to use when `-p` isn't given. Wins over `evm profile set-default`. |
+| `EVM_ELF_CONFIG_DIR` | Environment only | Moves the whole configuration directory, profiles and `.env` included. Useful for an isolated test setup. |
+| `XDG_CONFIG_HOME` | Environment only | Changes the parent directory when `EVM_ELF_CONFIG_DIR` isn't set. |
+| `EVM_PRICE_SOURCE` | Environment or `.env` | `coingecko` (the default when unset) or `none`. Any other value is treated as `none`. See [USD prices](#usd-prices). |
+| `COINGECKO_API_KEY` | Environment or `.env` | Sends a CoinGecko demo key. The public endpoint works without one. |
+
+```bash
+EVM_ELF_CONFIG_DIR=/tmp/evm-scratch evm chain list   # for one command
+export EVM_ELF_CONFIG_DIR=/tmp/evm-scratch           # for the shell
+```
 
 Profiles reference this same environment through `${VAR}`, so a key in `~/.config/evm-elf/.env` is available to every run:
 
@@ -177,8 +186,10 @@ ETHERSCAN_API_KEY=YourEtherscanKey
 
 | Value | Behavior |
 | --- | --- |
-| `coingecko` (default) | One batched request to the public CoinGecko `simple/price` endpoint, with a 5-second timeout. `COINGECKO_API_KEY` sends a demo key. |
+| Unset | CoinGecko, as below. |
+| `coingecko` | One batched request to the public CoinGecko `simple/price` endpoint, with a 5-second timeout. `COINGECKO_API_KEY` sends a demo key. |
 | `none` | No price request at all, the same as passing `--no-usd` to every command. |
+| Anything else | Treated as `none`, with a warning on stderr naming the value. Setting the variable at all means you wanted to control the lookup, so a value the CLI doesn't recognise stops it rather than falling back to the network. |
 
 Pricing is best-effort by design. A failing, rate-limited, or slow source leaves the USD column empty rather than failing the command, and the run still reports balances and nonces.
 
@@ -186,7 +197,7 @@ Which coin a chain's native token maps to comes from the profile. A chain withou
 
 ## Block explorer access
 
-Several `evm contract proxy-info --full` fields come from a block explorer rather than an RPC endpoint: the verified implementation name, the upgrade history, the creation transaction, and the ProxyAdmin trace to its managed proxy. Nothing else in the CLI uses an explorer.
+`evm contract proxy-info` is the only command that uses an explorer. Three of its `--full` fields come from one rather than from an RPC endpoint: the verified implementation name, the upgrade history, and the creation transaction. A fourth lookup doesn't wait for `--full` — the ProxyAdmin trace to the proxy an admin address manages runs whenever the address turns out to be a ProxyAdmin, and only `-s` skips it.
 
 Keys live in the `explorers` section of the profile, one per source. A single key covers every chain that source supports, so this is profile-wide rather than per chain:
 

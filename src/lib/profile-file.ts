@@ -16,9 +16,12 @@ import type { ChainConfig } from '../types.js';
 const FIELD_ORDER = ['chain_id', 'rpc_url', 'symbol', 'coingecko_id', 'explorer_api'] as const;
 
 /**
- * Parse a profile for editing, or start a new document when the file does not
- * exist yet. The 'chains' mapping is created if missing so that edits can
- * assume it is there.
+ * Parse a profile for editing. The 'chains' mapping is created if missing so
+ * that edits can assume it is there.
+ *
+ * A missing file yields an empty document rather than an error, so callers must
+ * check that the profile exists first: only the default profile is created on
+ * demand, and a -p naming anything else has to fail rather than write a new one.
  */
 export async function readProfileDocument(filePath: string): Promise<Document> {
   const doc = existsSync(filePath)

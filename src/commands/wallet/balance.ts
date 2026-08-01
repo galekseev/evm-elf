@@ -5,7 +5,6 @@
 import chalk from 'chalk';
 import { formatEther } from 'ethers';
 import type { BalanceResult, WalletBalanceOptions } from '../../types.js';
-import { loadEnv } from '../../lib/env.js';
 import { resolveAddress } from '../../lib/wallet.js';
 import { loadProfile, resolveChain, selectChains } from '../../lib/chains.js';
 import { createProvider } from '../../lib/rpc.js';
@@ -55,8 +54,6 @@ async function addUsdValues(
 }
 
 export async function balanceCommand(wallet: string, options: WalletBalanceOptions): Promise<void> {
-  loadEnv();
-
   let address: string;
   try {
     address = resolveAddress(wallet);

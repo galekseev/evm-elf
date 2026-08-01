@@ -16,6 +16,8 @@ Three of the five commands reach a chain and fan out across your profile. `send`
 | `[address](#evm-wallet-address-private-key)` | Derives the address for a key                              | No    |
 
 
+
+
 ## Options shared by the chain commands
 
 `balance`, `send`, and `set-nonce` accept these. [Configuration](configuration.md#chain-selection) explains how the selection resolves.
@@ -27,6 +29,8 @@ Three of the five commands reach a chain and fan out across your profile. `send`
 | `-xc, --exclude-chain <chains>` | Query every chain in the profile except these; can't be combined with `-c` |
 | `-p, --profile <nameOrPath>`    | Use another profile, by name or by path                                    |
 | `--json`                        | Print JSON instead of a table                                              |
+
+
 
 
 ## `evm wallet balance <wallet>`
@@ -62,12 +66,12 @@ Total                                                         $168.81
 
 Four details in the output repay knowing:
 
-- `**Nonce` is the pending nonce**, which counts transactions in the mempool as well as mined ones.
-- `**Value (USD)` shows `-**` when the chain has no `coingecko_id` or the price lookup failed. Those chains stay out of the total, and a closing line names any that hold a balance.
-- **Amounts under $0.01 print as `<$0.01`**, so a dust balance isn't rounded to nothing.
-- `**Status` carries per-chain errors.** An unreachable endpoint reports itself there while the other chains still print.
+- **The** `Nonce` **column is the pending nonce**, which counts transactions in the mempool as well as mined ones.
+- `Value (USD)` **shows** `-` when the chain has no `coingecko_id` or the price lookup failed. Those chains stay out of the total, and a closing line names any that hold a balance.
+- **Amounts under $0.01 print as** `<$0.01`, so a dust balance isn't rounded to nothing.
+- `Status` **carries per-chain errors.** An unreachable endpoint reports itself there while the other chains still print.
 
-The JSON form returns one object per chain, with `symbol`, `priceUsd`, and `valueUsd` present only when they're known, and `error` present only when that chain failed:
+The JSON form returns one object per chain, with `symbol`, `priceUsd`, and `valueUsd` present only when they're known, and `error` present only when that chain failed. A failed chain still carries `balance`, `balanceEth`, and `nonce`, all zero — the row is a placeholder, not a reading — so check `error` before you add anything up:
 
 ```json
 [
@@ -85,6 +89,8 @@ The JSON form returns one object per chain, with `symbol`, `priceUsd`, and `valu
 ]
 ```
 
+
+
 ## `evm wallet send <to>`
 
 Sends the native token to one address on every selected chain. Prints a plan and stops unless you pass `--exec`.
@@ -98,18 +104,18 @@ evm wallet send <to> (--value <amount> | --all) --private-key <key>
 `<to>` must be a valid address, and exactly one of `--value` or `--all` is required.
 
 
-| Option                      | Effect                                                                                           |
-| --------------------------- | ------------------------------------------------------------------------------------------------ |
-| `--value <amount>`          | Send this amount on each selected chain. Accepts `0.01`, `0.01ether`, or `10000000000000000wei`. |
-| `--all`                     | Sweep the whole balance minus a gas reserve. Can't be combined with `--value`.                   |
-| `--fee-buffer <multiplier>` | Multiplier on the `--all` gas reserve. Default `1.1`; must be at least `1`.                      |
-| `--private-key <key>`       | Required. A hex key or the name of an environment variable holding one.                          |
-| `--exec`                    | Broadcast. Without it the command only prints its plan.                                          |
-| `--no-wait`                 | Return once transactions are broadcast, instead of waiting for receipts.                         |
+| Option                      | Effect                                                                                                                              |
+| --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `--value <amount>`          | Send this amount on each selected chain. Accepts `0.01`, `0.01ether`, or `10000000000000000wei`.                                    |
+| `--all`                     | Sweep the whole balance minus a gas reserve. Can't be combined with `--value`.                                                      |
+| `--fee-buffer <multiplier>` | Multiplier on the `--all` gas reserve. Default `1.1`; must be at least `1`. Rejected alongside `--value`, which holds nothing back. |
+| `--private-key <key>`       | Required. A hex key or the name of an environment variable holding one.                                                             |
+| `--exec`                    | Broadcast. Without it the command only prints its plan.                                                                             |
+| `--no-wait`                 | Return once transactions are broadcast, instead of waiting for receipts. Needs `--exec`: a plan broadcasts nothing to wait for.     |
 
 
 > [!CAUTION]
-> `**--all --exec` empties the wallet.** It sweeps the entire native balance of every selected chain, and with no `-c` or `-xc` that is every chain in your profile at once. A broadcast transaction cannot be recalled, cancelled, or refunded by anyone: a mistyped recipient is a permanent loss, and the only confirmation step that exists is the plan you print by leaving `--exec` off.
+> `--all --exec` **empties the wallet.** It sweeps the entire native balance of every selected chain, and with no `-c` or `-xc` that is every chain in your profile at once. A broadcast transaction cannot be recalled, cancelled, or refunded by anyone: a mistyped recipient is a permanent loss, and the only confirmation step that exists is the plan you print by leaving `--exec` off.
 >
 > Run it without `--exec` first. Then check the recipient character by character, check the chain list, and check the amount each chain would sweep. The plan names the recipient but not the signer, so confirm the wallet you're about to empty with `evm wallet address DEPLOYER_PK` before you commit. You do this at your own risk — evm-elf is [MIT-licensed](../LICENSE) software supplied without warranty of any kind, and the author accepts no liability for funds lost through a transaction you signed.
 
@@ -128,6 +134,8 @@ Chain           Chain ID   Value Sent                Status
 base            8453       0.01                      will send
 ```
 
+Amounts are named in the chain's own token, taken from its `symbol` in the profile — so the same `--value 0.01` reads as `0.01 BNB` on `bsc` and `0.01 POL` on `matic`. The opening line can only name one token, so it drops the symbol when the selected chains don't agree on one, and a chain whose entry sets no `symbol` gets a bare number. The `Value Sent` column is always a bare number.
+
 The `Status` column reports one of these per chain.
 
 
@@ -143,6 +151,8 @@ The `Status` column reports one of these per chain.
 
 > [!WARNING]
 > Without `-c` or `-xc`, `send` covers every chain in the profile, so `--value 0.01 --exec` sends 0.01 of the native token 14 times over on the bundled profile. The plan lists exactly which chains it would touch; read it before adding `--exec`.
+
+
 
 ### How `--value` and `--all` differ in a dry run
 
@@ -170,7 +180,7 @@ evm wallet set-nonce <target> --private-key <key>
                      [-c chains | -xc chains] [-p profile] [--exec] [--json]
 ```
 
-`<target>` must be a non-negative integer.
+`<target>` must be a non-negative integer. A leading `-` is read as an option, so a negative target is rejected by the argument parser rather than by the command.
 
 The command is mainly useful for one job: deploying a contract at the same address on several chains. A `CREATE` address is derived from the deployer address and its nonce and nothing else, so the same deployer sending from the same nonce lands the contract at the same address on every chain.
 
@@ -221,6 +231,8 @@ The JSON form returns `address`, `mnemonic`, and `privateKey`, which is the form
 
 > [!CAUTION]
 > Both the mnemonic and the private key are printed in full, to stdout, once. Anything reading your terminal or scrollback reads them too.
+
+
 
 ## `evm wallet address <private-key>`
 

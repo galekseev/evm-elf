@@ -71,7 +71,9 @@ Only `default` is created on demand. Every other name must exist before a comman
 
 ### `Invalid profile <path>: expected a top-level 'chains' mapping`
 
-The YAML file parsed, but its structure is wrong. A profile must have exactly one top-level key, `chains`, with one entry per chain beneath it. A file that starts straight into chain names, or nests them under a different key, produces this. Compare yours against the example in [The profile file](configuration.md#the-profile-file).
+The YAML file parsed, but its structure is wrong. A profile needs a top-level `chains` key with one entry per chain beneath it. A file that starts straight into chain names, or nests them under a different key, produces this. Compare yours against the example in [The profile file](configuration.md#the-profile-file).
+
+`chains` is the only key a profile must have, not the only one it may have: `explorers` holds the block explorer API keys and is optional. Any other top-level key is ignored rather than rejected, so a misspelled `chains` reads as a missing one.
 
 ### `Invalid profile: chain 'base' in <path> has unknown field 'rpc_urls'`
 
@@ -277,12 +279,17 @@ These stop the command before it reaches a chain. Each one names what it receive
 
 | Message | Fix |
 | --- | --- |
-| `Invalid Ethereum address: <value>` | Pass a checksummed 20-byte address. |
+| `Invalid Ethereum address: <value>` | Pass a checksummed 20-byte address. From `owner`, `proxy-info`, and `code`. |
 | `Invalid recipient address: <value>` | Same, for the `<to>` argument of `send`. |
+| `Invalid contract address: <value>` | Same, for the first argument of `transfer-ownership`. |
+| `Invalid new owner address: <value>` | Same, for the second argument of `transfer-ownership`. |
+| `Invalid proxy address: <value>` | Same, for the first argument of `proxy-upgrade`. |
+| `Invalid implementation address: <value>` | Same, for the second argument of `proxy-upgrade`. |
 | `send requires either --value <amount> or --all` | Choose one. They can't be combined. |
 | `Invalid --value: <value>` | Use `0.01`, `0.01ether`, or `10000000000000000wei`. |
 | `Invalid --fee-buffer: <value> (must be a number >= 1)` | Pass a number of at least `1`, such as `1.5`. |
-| `Target nonce must be a non-negative integer, got: <value>` | Pass a whole number of `0` or more. |
+| `--no-wait has no effect without --exec: a plan sends nothing` | Drop `--no-wait`, or add `--exec` if you meant to broadcast. |
+| `Target nonce must be a non-negative integer, got: <value>` | Pass a whole number of `0` or more. A leading `-` is read as an option, so `set-nonce -3` fails as `unknown option '-3'` before reaching this check. |
 | `--words must be 12 or 24, got: <value>` | Only those two mnemonic lengths exist. |
 | `--short and --full are mutually exclusive` | Choose one detail level. |
 | `--full requires exactly one chain (use -c <chain>)` | Narrow to a single chain. |
@@ -290,15 +297,19 @@ These stop the command before it reaches a chain. Each one names what it receive
 | `proxy-upgrade requires exactly one chain (-c <chain>)` | Same. |
 | `Invalid --data: must be a 0x-prefixed hex string, got: <value>` | Pass `0x`-prefixed calldata, or omit it for `0x`. |
 | `Invalid --header '<value>': expected <name>:<value>` | Use `-H 'auth-key:secret'`, with one colon separating name from value. |
+| `Invalid --chain-id '<value>': expected a positive integer` | Pass a whole number above `0`, or omit it and let the endpoint answer. |
+| `--no-verify needs --chain-id, since the chain id cannot be read from the RPC` | Add `--chain-id <id>`, or drop `--no-verify` and let the endpoint answer. |
 | `Invalid chain name '<value>'` | Use letters, digits, `.`, `_`, or `-`. |
-| `Invalid profile name '<value>'` | Same rule, and the name must start with a letter or digit. |
-| `No chains selected` | The profile has no chains, or `-xc` excluded all of them. |
+| `Invalid profile name '<value>'` | Same rule, and the name must start with a letter or digit. Checked for `-p` and `$EVM_ELF_PROFILE` as well as for the `evm profile` commands. |
+| `Empty API key for '<name>': …` | Pass a key, or drop the entry with `evm explorer remove <name>`. |
+| `key argument is neither a hex key nor a set environment variable: <value>` | The `wallet address` wording of the `--private-key` message above. |
+| `No chains selected` | From `wallet send` only: the profile has no chains, or `-xc` excluded all of them. Every other command reports an empty selection as an empty table and exits `0`. |
 | `Unknown explorer '<value>': known explorers are etherscan, blockscout` | Only those two sources exist. |
 | `<explorer> rejected the key: <reason>` | The explorer refused the key. The reason is its own; fix the key, or pass `--no-verify` to store it regardless. |
 | `Could not resolve ${VAR}: the environment variable is not set` | Export the variable, or pass `--no-verify` when writing a profile for another machine. |
 | `Invalid profile <path>: unknown explorer '<name>'` | A hand-edited `explorers` section names a source that doesn't exist. |
 
-Passing both `-c` and `-xc` is also rejected, by the argument parser rather than by the command, since the two describe the same selection in opposite ways.
+Three option pairs are rejected by the argument parser rather than by the command, so the wording is the parser's — `option 'x' cannot be used with option 'y'`. `-c` with `-xc`, and `--value` with `--all`, each describe the same thing in two ways. `--fee-buffer` with `--value` is different: the gas reserve it scales exists only for `--all`, so passing it alongside `--value` means one of the two isn't what you wanted.
 
 ## Next steps
 

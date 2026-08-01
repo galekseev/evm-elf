@@ -91,7 +91,12 @@ Examples:
     .addOption(
       new Option('--all', 'Sweep the entire balance minus gas reserve').conflicts('value')
     )
-    .option('--fee-buffer <multiplier>', 'Gas reserve multiplier for --all (default: 1.1)')
+    .addOption(
+      new Option(
+        '--fee-buffer <multiplier>',
+        'Gas reserve multiplier for --all (default: 1.1)'
+      ).conflicts('value')
+    )
     .option('--exec', 'Send transactions (default: display plan only)')
     .requiredOption('--private-key <key>', 'Private key (hex or env var name)')
     .option('-c, --chain <chains>', 'Chain(s) to send on (comma-separated; default: every chain in the profile)')
@@ -99,7 +104,7 @@ Examples:
       new Option('-xc, --exclude-chain <chains>', 'Exclude chain(s) from the profile (comma-separated)').conflicts('chain')
     )
     .option('-p, --profile <nameOrPath>', 'Profile to use (default: default, or $EVM_ELF_PROFILE)')
-    .option('--no-wait', 'Do not wait for the transaction receipt')
+    .option('--no-wait', 'Do not wait for the transaction receipt (needs --exec)')
     .option('--json', 'Output as JSON')
     .addHelpText(
       'after',

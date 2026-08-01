@@ -6,7 +6,6 @@
 import chalk from 'chalk';
 import { Wallet } from 'ethers';
 import type { SetNonceResult, WalletSetNonceOptions } from '../../types.js';
-import { loadEnv } from '../../lib/env.js';
 import { loadProfile, resolveChain, selectChains } from '../../lib/chains.js';
 import { createProvider } from '../../lib/rpc.js';
 import { deriveAddress, resolvePrivateKey } from '../../lib/wallet.js';
@@ -18,8 +17,6 @@ export async function setNonceCommand(
   targetArg: string,
   options: WalletSetNonceOptions
 ): Promise<void> {
-  loadEnv();
-
   const targetNonce = Number(targetArg);
   if (!Number.isInteger(targetNonce) || targetNonce < 0) {
     console.error(chalk.red(`Target nonce must be a non-negative integer, got: ${targetArg}`));

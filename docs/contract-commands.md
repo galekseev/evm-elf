@@ -74,7 +74,7 @@ Detection reads the EIP-1967 storage slots and the bytecode, so it works without
 | Beacon proxy (EIP-1967) | Beacon, beacon owner, `beacon.implementation()`, and the proxy's own `owner()` |
 | Minimal proxy (EIP-1167 clone) | The implementation embedded in the bytecode. These aren't upgradeable. |
 | Beacon contract | The address is itself a beacon: its implementation and owner |
-| ProxyAdmin contract | Its owner, plus the proxy it administers and that proxy's implementation, traced through the admin's creation transaction |
+| ProxyAdmin contract | Its owner, plus the proxy it administers and that proxy's implementation, traced through the admin's creation transaction. The trace needs an explorer, and is the one explorer lookup that doesn't wait for `--full`; `-s` skips it |
 | Not a proxy | `owner()`, when the contract has one |
 
 ### Scan every chain with `--short`
@@ -158,7 +158,6 @@ Read from a block explorer, so present only when one is reachable:
 - The verified implementation name.
 - Upgrade history, from `Upgraded` events.
 - Creation information: the deployer, the date, and the transaction.
-- The ProxyAdmin trace from an admin address to the proxy it manages.
 
 > [!NOTE]
 > Explorer lookups walk the sources the profile configures: a chain's own `explorer_api`, then Etherscan, then Blockscout, stopping at the first that answers. With none configured, those fields are left out and the run says so once on stderr. Add a key with [`evm explorer set`](explorer-commands.md#evm-explorer-set-explorer-apikey), and see [Block explorer access](configuration.md#block-explorer-access) for the order.
@@ -175,7 +174,7 @@ evm contract code <address> [-c chains | -xc chains] [-p profile] [--full] [--js
 
 | Option | Effect |
 | --- | --- |
-| `--full` | Print the full bytecode hex after the table. Requires exactly one chain. |
+| `--full` | Print the full bytecode hex after the table. Requires exactly one chain, and prints nothing extra when the address holds no code. |
 
 ```bash
 evm contract code 0x1111111254EEB25477B68fb85Ed929f73A960582 -c base,sepolia
@@ -190,7 +189,7 @@ base            8453       22484 B      deployed
 sepolia         11155111   0 B          empty
 ```
 
-The JSON form adds `codeSize` and `deployed` per chain, and `code` with the hex when you pass `--full`.
+The JSON form adds `codeSize` and `deployed` per chain, and `code` with the hex when you pass `--full` — including `"code": "0x"` for an address holding nothing, which the table view leaves out.
 
 ## `evm contract transfer-ownership <address> <newOwner>`
 

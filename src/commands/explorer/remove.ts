@@ -5,7 +5,6 @@
 import { existsSync } from 'fs';
 import chalk from 'chalk';
 import type { ExplorerRemoveOptions } from '../../types.js';
-import { loadEnv } from '../../lib/env.js';
 import { resolveProfileTarget } from '../../lib/chains.js';
 import { EXPLORER_NAMES, isExplorerName } from '../../lib/explorer/index.js';
 import {
@@ -24,8 +23,6 @@ export async function explorerRemoveCommand(
   name: string,
   options: ExplorerRemoveOptions
 ): Promise<void> {
-  loadEnv();
-
   if (!isExplorerName(name)) {
     fail(`Unknown explorer '${name}': known explorers are ${EXPLORER_NAMES.join(', ')}`);
   }
