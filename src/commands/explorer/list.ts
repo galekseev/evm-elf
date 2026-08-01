@@ -6,7 +6,6 @@
 
 import chalk from 'chalk';
 import type { ExplorerListOptions } from '../../types.js';
-import { loadEnv } from '../../lib/env.js';
 import { loadProfile } from '../../lib/chains.js';
 import { EXPLORER_NAMES, explorerBaseUrl } from '../../lib/explorer/index.js';
 import { maskValue } from '../../lib/mask.js';
@@ -17,8 +16,6 @@ const COL = {
 } as const;
 
 export async function explorerListCommand(options: ExplorerListOptions): Promise<void> {
-  loadEnv();
-
   const profile = await loadProfile(options.profile);
 
   if (options.json) {

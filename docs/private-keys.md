@@ -2,7 +2,7 @@
 
 [Documentation](README.md) › Private keys
 
-This page shows how to give the CLI a signing key without leaving it in your shell history, in a file, or on screen. Five commands sign: `wallet send`, `wallet set-nonce`, `contract transfer-ownership`, `contract proxy-upgrade`, and `wallet address`. Everything else is a read and never asks for a key.
+This page shows how to give the CLI a signing key without leaving it in your shell history, in a file, or on screen. Four commands sign: `wallet send`, `wallet set-nonce`, `contract transfer-ownership`, and `contract proxy-upgrade`. Two more accept a key without signing with it — `wallet address` derives an address from one, and `wallet balance` takes one in place of an address — and both do that locally. Everything else is a read that never asks for a key.
 
 The short version: pass the **name** of an environment variable instead of the key itself.
 

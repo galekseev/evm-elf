@@ -5,13 +5,10 @@
 import chalk from 'chalk';
 import { isAddress } from 'ethers';
 import type { CodeResult, WalletCodeOptions } from '../../types.js';
-import { loadEnv } from '../../lib/env.js';
 import { loadProfile, resolveChain, selectChains } from '../../lib/chains.js';
 import { createProvider } from '../../lib/rpc.js';
 
 export async function codeCommand(address: string, options: WalletCodeOptions): Promise<void> {
-  loadEnv();
-
   if (!isAddress(address)) {
     console.error(chalk.red(`Invalid Ethereum address: ${address}`));
     process.exit(1);

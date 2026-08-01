@@ -18,17 +18,20 @@ import {
   resolveDefaultProfile,
   resolveEnvRefs,
 } from './env.js';
-import { ensureDefaultProfile } from './profiles.js';
+import { assertProfileName, ensureDefaultProfile } from './profiles.js';
 import { parseRpcUrl, type RpcEndpoint } from './rpc.js';
 
 /**
  * Resolve a profile reference: anything path-like is used as given, a bare name
- * is looked up in the profiles directory.
+ * is looked up in the profiles directory. A bare name is checked here rather
+ * than only in the `evm profile` commands, so that -p and $EVM_ELF_PROFILE
+ * report an unusable name as such instead of as a missing file.
  */
 export function resolveProfilePath(nameOrPath: string): string {
   if (nameOrPath.includes('/') || isAbsolute(nameOrPath)) {
     return resolve(process.cwd(), nameOrPath);
   }
+  assertProfileName(nameOrPath);
   const baseName = nameOrPath.replace(/\.(yaml|yml)$/, '');
   const yamlPath = resolve(PROFILES_DIR, `${baseName}.yaml`);
   if (!existsSync(yamlPath)) {
@@ -140,14 +143,15 @@ async function readProfileFile(filePath: string): Promise<ProfileContents> {
  * Name and path of the profile to work on: the one named by -p, else the
  * default one ($EVM_ELF_PROFILE, else "default"). The default profile is seeded
  * from the bundled one when it is not there yet, so reading and editing start
- * from the same file.
+ * from the same file. It is the only profile created on demand, whether it was
+ * reached through -p or by falling back to it.
  */
 export async function resolveProfileTarget(
   nameOrPath?: string
 ): Promise<{ name: string; path: string }> {
   const name = nameOrPath ?? defaultProfileName();
   const filePath = resolveProfilePath(name);
-  if (!existsSync(filePath) && nameOrPath === undefined && name === DEFAULT_PROFILE_NAME) {
+  if (!existsSync(filePath) && name === DEFAULT_PROFILE_NAME) {
     await ensureDefaultProfile(filePath);
   }
   return { name, path: filePath };

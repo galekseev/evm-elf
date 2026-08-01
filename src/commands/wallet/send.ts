@@ -10,7 +10,6 @@
 import chalk from 'chalk';
 import { Wallet, formatEther, isAddress, parseEther } from 'ethers';
 import type { SendResult, WalletSendOptions } from '../../types.js';
-import { loadEnv } from '../../lib/env.js';
 import { loadProfile, resolveChain, selectChains } from '../../lib/chains.js';
 import { createProvider } from '../../lib/rpc.js';
 import { resolvePrivateKey } from '../../lib/wallet.js';
@@ -30,8 +29,6 @@ function parseValue(raw: string): bigint {
 }
 
 export async function sendCommand(to: string, options: WalletSendOptions): Promise<void> {
-  loadEnv();
-
   if (!isAddress(to)) {
     console.error(chalk.red(`Invalid recipient address: ${to}`));
     process.exit(1);
@@ -39,6 +36,12 @@ export async function sendCommand(to: string, options: WalletSendOptions): Promi
 
   if (!options.all && options.value === undefined) {
     console.error(chalk.red('send requires either --value <amount> or --all'));
+    process.exit(1);
+  }
+
+  // A plan broadcasts nothing, so there is no receipt to skip waiting for.
+  if (options.wait === false && !options.exec) {
+    console.error(chalk.red('--no-wait has no effect without --exec: a plan sends nothing'));
     process.exit(1);
   }
 
@@ -77,11 +80,17 @@ export async function sendCommand(to: string, options: WalletSendOptions): Promi
   const planOnly = !options.exec;
   const results: SendResult[] = [];
 
+  // Resolving up front costs nothing (no I/O) and gives the header a token to
+  // name whenever every selected chain agrees on one.
+  const resolvedChains = chains.map((chain) => resolveChain(chain, profile));
+  const symbols = new Set(resolvedChains.map((resolved) => resolved.symbol ?? ''));
+  const sharedSymbol = symbols.size === 1 ? [...symbols][0] : '';
+
   if (!quiet) {
     console.log();
     const mode = options.all
       ? `sweep entire balance (fee buffer x${feeBuffer})`
-      : `${formatEther(fixedValue!)} ETH`;
+      : `${formatEther(fixedValue!)}${sharedSymbol ? ` ${sharedSymbol}` : ''}`;
     console.log(`Wallet Send: ${mode} → ${chalk.bold(to)}`);
     if (planOnly) {
       console.log(chalk.dim('(plan only — pass --exec to send transactions)'));
@@ -92,7 +101,10 @@ export async function sendCommand(to: string, options: WalletSendOptions): Promi
   for (let i = 0; i < chains.length; i++) {
     const chain = chains[i];
     const progress = chalk.dim(`[${i + 1}/${chains.length}]`);
-    const resolved = resolveChain(chain, profile);
+    const resolved = resolvedChains[i];
+    // Suffix for an amount on this chain: the profile is the only thing that
+    // knows a chain's native token, so a chain without `symbol` gets none.
+    const token = resolved.symbol ? ` ${resolved.symbol}` : '';
 
     const base: SendResult = {
       chain,
@@ -136,7 +148,7 @@ export async function sendCommand(to: string, options: WalletSendOptions): Promi
         value = balance - reserve;
 
         if (value <= 0n) {
-          const msg = `balance too low (${formatEther(balance)} ETH, gas reserve ${formatEther(reserve)} ETH)`;
+          const msg = `balance too low (${formatEther(balance)}${token}, gas reserve ${formatEther(reserve)}${token})`;
           if (!quiet) console.log(`${progress} ${chain}: ${chalk.dim(`skip (${msg})`)}`);
           results.push({ ...base, skipped: msg });
           continue;
@@ -156,7 +168,7 @@ export async function sendCommand(to: string, options: WalletSendOptions): Promi
 
       if (planOnly) {
         if (!quiet) {
-          console.log(`${progress} ${chain}: would send ${chalk.cyan(formatEther(value))} ETH`);
+          console.log(`${progress} ${chain}: would send ${chalk.cyan(formatEther(value))}${token}`);
         }
         results.push({
           ...base,
@@ -167,7 +179,7 @@ export async function sendCommand(to: string, options: WalletSendOptions): Promi
       }
 
       if (!quiet) {
-        console.log(`${progress} ${chain}: sending ${chalk.cyan(formatEther(value))} ETH...`);
+        console.log(`${progress} ${chain}: sending ${chalk.cyan(formatEther(value))}${token}...`);
       }
 
       const tx = await wallet.sendTransaction({ to, value, ...txOverrides });

@@ -15,7 +15,13 @@ import { buildContractCommand } from './src/cli/contract.js';
 import { buildChainCommand } from './src/cli/chain.js';
 import { buildExplorerCommand } from './src/cli/explorer.js';
 import { buildProfileCommand } from './src/cli/profile.js';
-import { PACKAGE_ROOT, PROFILES_DIR } from './src/lib/env.js';
+import { PACKAGE_ROOT, PROFILES_DIR, loadEnv } from './src/lib/env.js';
+
+// Loaded once, here, rather than by each command: nearly every command resolves
+// something from the environment - a ${VAR} in a profile, an env var name in
+// place of a key, the profile to use - and a handler that omitted the call used
+// to see a different environment from its neighbours.
+loadEnv();
 
 const { version } = JSON.parse(
   readFileSync(resolve(PACKAGE_ROOT, 'package.json'), 'utf-8')

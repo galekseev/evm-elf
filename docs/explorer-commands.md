@@ -24,7 +24,7 @@ evm explorer list [-p profile] [--reveal] [--json]
 
 | Option | Effect |
 | --- | --- |
-| `--reveal` | Print literal keys instead of masking them |
+| `--reveal` | Print literal keys in full. A `${VAR}` reference is shown as written either way |
 
 ```bash
 evm explorer list
@@ -71,6 +71,8 @@ evm explorer set <explorer> <apiKey> [-p profile] [--no-verify] [--json]
 ```
 
 `<explorer>` must be `etherscan` or `blockscout`. `<apiKey>` is either a literal key or a `${VAR}` reference resolved at run time, which is the form that keeps the key out of the profile file.
+
+The profile itself must already exist. `default` is created on demand, but any other name `-p` gives is expected to be there, so a typo fails with `Profile not found` instead of writing a new profile holding nothing but that key.
 
 | Option | Effect |
 | --- | --- |
@@ -159,7 +161,7 @@ These commands exit `1` whenever they change nothing, which makes them safe to c
 | Command | Exits `1` when |
 | --- | --- |
 | `list` | The profile is missing or can't be parsed. |
-| `set` | The explorer name is unknown, the key is empty, the `${VAR}` doesn't resolve, or the explorer rejects the key. The last two are skipped by `--no-verify`. |
+| `set` | The profile doesn't exist, the explorer name is unknown, the key is empty, the `${VAR}` doesn't resolve, or the explorer rejects the key. The last two are skipped by `--no-verify`. |
 | `remove` | The explorer name is unknown, or the profile doesn't configure it. |
 
 ## Next steps

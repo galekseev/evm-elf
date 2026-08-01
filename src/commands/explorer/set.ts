@@ -6,9 +6,10 @@
  * would otherwise surface much later, and only as fields quietly going missing.
  */
 
+import { existsSync } from 'fs';
 import chalk from 'chalk';
 import type { ExplorerSetOptions } from '../../types.js';
-import { loadEnv, tryResolveEnvRefs } from '../../lib/env.js';
+import { tryResolveEnvRefs } from '../../lib/env.js';
 import { resolveProfileTarget } from '../../lib/chains.js';
 import {
   EXPLORER_NAMES,
@@ -35,8 +36,6 @@ export async function explorerSetCommand(
   apiKey: string,
   options: ExplorerSetOptions
 ): Promise<void> {
-  loadEnv();
-
   if (!isExplorerName(name)) {
     fail(`Unknown explorer '${name}': known explorers are ${EXPLORER_NAMES.join(', ')}`);
   }
@@ -47,6 +46,11 @@ export async function explorerSetCommand(
   }
 
   const { name: profileName, path: profilePath } = await resolveProfileTarget(options.profile);
+  // Only the default profile is created on demand, so a -p that names anything
+  // else is a typo rather than a request for a new profile.
+  if (!existsSync(profilePath)) {
+    fail(`Profile not found: ${profilePath}`);
+  }
   const doc = await readProfileDocument(profilePath);
   const existing = getExplorers(doc)[name];
 

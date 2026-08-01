@@ -6,7 +6,7 @@
  */
 
 import { constants, existsSync, readFileSync } from 'fs';
-import { copyFile, mkdir, readdir, rename, unlink, writeFile } from 'fs/promises';
+import { chmod, copyFile, mkdir, readdir, rename, unlink, writeFile } from 'fs/promises';
 import { basename, dirname, extname, resolve } from 'path';
 import chalk from 'chalk';
 import { BUNDLED_DEFAULT_PROFILE_PATH, DEFAULT_POINTER_PATH, PROFILES_DIR } from './env.js';
@@ -14,6 +14,13 @@ import { BUNDLED_DEFAULT_PROFILE_PATH, DEFAULT_POINTER_PATH, PROFILES_DIR } from
 const PROFILE_EXTENSIONS = ['.yaml', '.yml'];
 const PROFILE_NAME = /^[a-zA-Z0-9][a-zA-Z0-9._-]*$/;
 const EMPTY_PROFILE = `# evm-elf profile. Add chains with: evm chain set <chain> <rpc-url>\nchains: {}\n`;
+
+/**
+ * A profile may hold a literal API key in a header or in `explorers`, so it is
+ * owner-only. copyFile carries the source's permissions over, which for the
+ * bundled profile is world-readable, so every copy is tightened afterwards.
+ */
+const OWNER_ONLY = 0o600;
 
 /**
  * Names in these commands become paths inside the profiles directory, so a
@@ -58,6 +65,7 @@ export async function ensureDefaultProfile(targetPath: string): Promise<void> {
     }
     throw error;
   }
+  await chmod(targetPath, OWNER_ONLY);
   console.error(chalk.dim(`Created ${targetPath} from the bundled default profile`));
 }
 
@@ -71,10 +79,11 @@ export async function createProfile(targetPath: string, empty: boolean): Promise
   }
   await mkdir(dirname(targetPath), { recursive: true });
   if (empty) {
-    await writeFile(targetPath, EMPTY_PROFILE, { mode: 0o600, flag: 'wx' });
+    await writeFile(targetPath, EMPTY_PROFILE, { mode: OWNER_ONLY, flag: 'wx' });
     return;
   }
   await copyFile(BUNDLED_DEFAULT_PROFILE_PATH, targetPath, constants.COPYFILE_EXCL);
+  await chmod(targetPath, OWNER_ONLY);
 }
 
 /** Copy a profile verbatim, so comments and key order survive */
@@ -95,6 +104,7 @@ export async function copyProfile(
   await mkdir(dirname(targetPath), { recursive: true });
   const mode = force ? undefined : constants.COPYFILE_EXCL;
   await copyFile(sourcePath, targetPath, mode);
+  await chmod(targetPath, OWNER_ONLY);
 }
 
 export async function deleteProfile(targetPath: string): Promise<void> {
@@ -117,7 +127,7 @@ export async function writeDefaultPointer(name: string): Promise<void> {
   await mkdir(PROFILES_DIR, { recursive: true });
   const tmpPath = `${DEFAULT_POINTER_PATH}.${process.pid}.tmp`;
   try {
-    await writeFile(tmpPath, `${name}\n`, { mode: 0o600 });
+    await writeFile(tmpPath, `${name}\n`, { mode: OWNER_ONLY });
     await rename(tmpPath, DEFAULT_POINTER_PATH);
   } catch (error) {
     await unlink(tmpPath).catch(() => undefined);

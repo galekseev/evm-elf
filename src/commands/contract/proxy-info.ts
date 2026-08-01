@@ -12,7 +12,6 @@ import type {
   ProxyAccountInfo,
   ProxyInfoResult,
 } from '../../types.js';
-import { loadEnv } from '../../lib/env.js';
 import {
   loadProfile,
   resolveChain,
@@ -286,7 +285,12 @@ async function inspectProxy(
   address: string,
   mode: InspectMode
 ): Promise<ProxyInfoResult> {
-  const result: ProxyInfoResult = { chain: resolved.chain, chainId: resolved.chainId, address };
+  const result: ProxyInfoResult = {
+    chain: resolved.chain,
+    chainId: resolved.chainId,
+    address,
+    ...(resolved.symbol ? { symbol: resolved.symbol } : {}),
+  };
   const light = mode === 'short';
   const full = mode === 'full';
 
@@ -462,7 +466,9 @@ function printFullExtras(
   }
 
   if (result.balanceWei) {
-    line('Balance:', chalk.yellow(`${formatEther(BigInt(result.balanceWei))} ETH`) + chalk.dim(' (native funds held by this address)'));
+    const amount = formatEther(BigInt(result.balanceWei));
+    const token = result.symbol ? ` ${result.symbol}` : '';
+    line('Balance:', chalk.yellow(`${amount}${token}`) + chalk.dim(' (native funds held by this address)'));
   }
 
   if (result.implementation && result.implementationVerified !== undefined) {
@@ -638,8 +644,6 @@ export async function proxyInfoCommand(
   address: string,
   options: ContractProxyInfoOptions
 ): Promise<void> {
-  loadEnv();
-
   if (!isAddress(address)) {
     console.error(chalk.red(`Invalid Ethereum address: ${address}`));
     process.exit(1);
