@@ -5,7 +5,6 @@
 
 import chalk from 'chalk';
 import type { ChainListOptions } from '../../types.js';
-import { loadEnv } from '../../lib/env.js';
 import { loadProfile } from '../../lib/chains.js';
 import { maskValue } from '../../lib/mask.js';
 
@@ -21,8 +20,6 @@ function truncate(value: string, width: number): string {
 }
 
 export async function chainListCommand(options: ChainListOptions): Promise<void> {
-  loadEnv();
-
   const profile = await loadProfile(options.profile);
   const entries = Object.entries(profile.chains);
 

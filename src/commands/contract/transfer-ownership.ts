@@ -9,7 +9,6 @@ import type {
   ContractTransferOwnershipOptions,
   TransferOwnershipResult,
 } from '../../types.js';
-import { loadEnv } from '../../lib/env.js';
 import { loadProfile, resolveChain } from '../../lib/chains.js';
 import { createProvider } from '../../lib/rpc.js';
 import { resolvePrivateKey } from '../../lib/wallet.js';
@@ -20,8 +19,6 @@ export async function transferOwnershipCommand(
   newOwner: string,
   options: ContractTransferOwnershipOptions
 ): Promise<void> {
-  loadEnv();
-
   if (!isAddress(address)) {
     console.error(chalk.red(`Invalid contract address: ${address}`));
     process.exit(1);

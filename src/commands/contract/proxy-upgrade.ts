@@ -6,7 +6,6 @@
 import chalk from 'chalk';
 import { Contract, Wallet, getAddress, isAddress, isHexString } from 'ethers';
 import type { ContractUpgradeOptions, UpgradeProxyResult } from '../../types.js';
-import { loadEnv } from '../../lib/env.js';
 import { loadProfile, resolveChain } from '../../lib/chains.js';
 import { createProvider } from '../../lib/rpc.js';
 import { resolvePrivateKey } from '../../lib/wallet.js';
@@ -24,8 +23,6 @@ export async function proxyUpgradeCommand(
   newImplementation: string,
   options: ContractUpgradeOptions
 ): Promise<void> {
-  loadEnv();
-
   if (!isAddress(proxy)) {
     console.error(chalk.red(`Invalid proxy address: ${proxy}`));
     process.exit(1);

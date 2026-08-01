@@ -18,7 +18,7 @@ export function buildChainCommand(): Command {
     .command('list')
     .description('List the chains a profile configures')
     .option('-p, --profile <nameOrPath>', 'Profile to read (default: default, or $EVM_ELF_PROFILE)')
-    .option('--reveal', 'Print header values instead of masking them')
+    .option('--reveal', 'Print literal header values in full (${VAR} is shown as written either way)')
     .option('--json', 'Output as JSON')
     .addHelpText(
       'after',

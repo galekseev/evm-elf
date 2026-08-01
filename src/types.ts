@@ -186,6 +186,7 @@ export interface ProxyInfoResult {
   chain: string;
   chainId: number;
   address: string;
+  symbol?: string;                // native token symbol, from the profile
   proxyType?: ProxyType;
   implementation?: string;        // EIP-1967 slot, clone target, or beacon.implementation()
   implementationHasCode?: boolean;

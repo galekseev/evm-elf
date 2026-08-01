@@ -5,14 +5,11 @@
 import chalk from 'chalk';
 import { Contract, isAddress } from 'ethers';
 import type { ContractOwnerResult, WalletOptions } from '../../types.js';
-import { loadEnv } from '../../lib/env.js';
 import { loadProfile, resolveChain, selectChains } from '../../lib/chains.js';
 import { createProvider } from '../../lib/rpc.js';
 import { OWNABLE_ABI, hasCode } from '../../lib/proxy.js';
 
 export async function ownerCommand(address: string, options: WalletOptions): Promise<void> {
-  loadEnv();
-
   if (!isAddress(address)) {
     console.error(chalk.red(`Invalid Ethereum address: ${address}`));
     process.exit(1);

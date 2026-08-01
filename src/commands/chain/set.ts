@@ -5,9 +5,9 @@
  * built-in table, so any chain works and the id is verified rather than assumed.
  */
 
+import { existsSync } from 'fs';
 import chalk from 'chalk';
 import type { ChainConfig, ChainSetOptions } from '../../types.js';
-import { loadEnv } from '../../lib/env.js';
 import { buildEndpoint, loadBundledChains, resolveProfileTarget } from '../../lib/chains.js';
 import {
   getChain,
@@ -67,13 +67,16 @@ export async function chainSetCommand(
   rpcUrlArg: string | undefined,
   options: ChainSetOptions
 ): Promise<void> {
-  loadEnv();
-
   if (!CHAIN_NAME.test(chain)) {
     fail(`Invalid chain name '${chain}': use letters, digits, '.', '_' or '-'`);
   }
 
   const { name: profileName, path: profilePath } = await resolveProfileTarget(options.profile);
+  // Only the default profile is created on demand, so a -p that names anything
+  // else is a typo rather than a request for a new profile.
+  if (!existsSync(profilePath)) {
+    fail(`Profile not found: ${profilePath}`);
+  }
   const doc = await readProfileDocument(profilePath);
   const existing = getChain(doc, chain);
 
