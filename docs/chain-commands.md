@@ -22,7 +22,7 @@ evm chain list [-p profile] [--reveal] [--json]
 
 | Option | Effect |
 | --- | --- |
-| `--reveal` | Print header values instead of masking them |
+| `--reveal` | Print literal header values in full. A `${VAR}` reference is shown as written either way |
 
 ```bash
 evm chain list -p myproject
@@ -37,7 +37,9 @@ base            8453       https://mainnet.base.org                      ETH
 local           31337      http://127.0.0.1:8545                         -
 ```
 
-Header values are masked in this table, because one may be a literal API key. A `${VAR}` reference is shown as written, with `(unset)` appended when the variable has no value, which is how you catch a missing key without printing any. A literal value is reduced to its last four characters. `--reveal` prints literals in full.
+Header values are masked in this table, because one may be a literal API key. A `${VAR}` reference is shown as written, with `(unset)` appended when the variable has no value, which is how you catch a missing key without printing any. A literal value is reduced to its last four characters. `--reveal` prints literals in full; it has no effect on a reference, which is shown as written rather than resolved, since the reference is not the secret.
+
+An RPC URL longer than the column is cut with an ellipsis. `--reveal` doesn't affect that either — use `--json`, which prints every value in full, to read a long endpoint.
 
 > [!CAUTION]
 > The masking applies to the table only. `evm chain list --json` prints the profile exactly as stored, literal header values included.
@@ -54,6 +56,8 @@ evm chain set <chain> [rpcUrl] [-p profile] [--chain-id <id>]
 ```
 
 The RPC URL is optional when the chain already exists, which is how a single field gets changed without restating the endpoint.
+
+The profile itself must already exist. `default` is created on demand, but any other name `-p` gives is expected to be there, so a typo fails with `Profile not found` instead of writing a new one-chain profile. Create it first with [`evm profile create`](profile-commands.md#evm-profile-create-name).
 
 | Option | Effect |
 | --- | --- |
@@ -128,7 +132,7 @@ These commands exit `1` whenever they change nothing, which makes them safe to c
 | Command | Exits `1` when |
 | --- | --- |
 | `list` | The profile is missing or can't be parsed. |
-| `set` | The chain or header syntax is invalid, a new chain has no RPC URL, `--no-verify` came without `--chain-id`, the endpoint is unreachable, or the reported chain ID contradicts `--chain-id`. |
+| `set` | The profile doesn't exist, the chain or header syntax is invalid, a new chain has no RPC URL, `--no-verify` came without `--chain-id`, the endpoint is unreachable, or the reported chain ID contradicts `--chain-id`. |
 | `remove` | The profile is missing, or it doesn't configure that chain. |
 
 ## Next steps

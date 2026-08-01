@@ -126,7 +126,7 @@ evm wallet send 0x5d0F...95eB --all --private-key DEPLOYER_PK -c bsc,base,arbitr
 evm wallet send 0x5d0F...95eB --all --exec --fee-buffer 1.5 --private-key DEPLOYER_PK -xc mainnet
 ```
 
-`--value` accepts ether amounts (`0.01`, `0.01ether`) or wei (`10000000000000000wei`). The `--all` plan reads balances and gas prices, so it prints the exact amount each chain would send; `--fee-buffer` is the multiplier on that gas reserve (default `1.1`) and whatever the reserve does not spend stays behind as dust. `--no-wait` returns once the transactions are broadcast instead of waiting for receipts.
+`--value` accepts ether amounts (`0.01`, `0.01ether`) or wei (`10000000000000000wei`). The `--all` plan reads balances and gas prices, so it prints the exact amount each chain would send; `--fee-buffer` is the multiplier on that gas reserve (default `1.1`, `--all` only) and whatever the reserve does not spend stays behind as dust. `--no-wait` returns once the transactions are broadcast instead of waiting for receipts, so it needs `--exec`. Amounts are named in each chain's own token, from its `symbol` in the profile.
 
 ### `set-nonce <target>`
 
@@ -384,9 +384,9 @@ evm wallet send 0x5d0F...95eB --value 0.01 --private-key DEPLOYER_PK -c base --e
 | Variable | What it does |
 |---|---|
 | `EVM_ELF_PROFILE` | Profile to use when `-p` is not given; wins over `evm profile set-default` |
-| `EVM_ELF_CONFIG_DIR` | Where profiles and the user `.env` live (default: `$XDG_CONFIG_HOME/evm-elf`, else `~/.config/evm-elf`) |
+| `EVM_ELF_CONFIG_DIR` | Where profiles and the user `.env` live (default: `$XDG_CONFIG_HOME/evm-elf`, else `~/.config/evm-elf`). Export it: it picks the directory a `.env` is read from, so it cannot come from one |
 | `ETHERSCAN_API_KEY` | Referenced by the bundled profile as `explorers.etherscan`, not read by the CLI directly. Exporting it without that reference does nothing |
-| `EVM_PRICE_SOURCE` | `coingecko` (default) or `none`, see [Prices](#prices) |
+| `EVM_PRICE_SOURCE` | `coingecko` (the default when unset) or `none`; any other value is treated as `none`, see [Prices](#prices) |
 | `COINGECKO_API_KEY` | CoinGecko demo key; the public endpoint works without one |
 
 The same environment supplies the `${VAR}` references in a profile, such as RPC URLs and header values. Variables are read from the real environment first, then `./.env`, then `~/.config/evm-elf/.env` — an already-set variable is never overwritten.
@@ -397,8 +397,9 @@ The same environment supplies the `${VAR}` references in a profile, such as RPC 
 
 | Value | Behaviour |
 |---|---|
-| `coingecko` (default) | One batched request to the public CoinGecko `simple/price` endpoint. No API key needed; set `COINGECKO_API_KEY` to use a demo key. |
+| `coingecko` (the default when unset) | One batched request to the public CoinGecko `simple/price` endpoint. No API key needed; set `COINGECKO_API_KEY` to use a demo key. |
 | `none` | No price lookups at all, the same as passing `--no-usd` everywhere. |
+| Anything else | Treated as `none`, with a warning on stderr. Setting the variable means you wanted to control the lookup, so an unrecognised value stops it rather than reaching for the network. |
 
 The lookup is best-effort: a failing, rate-limited or slow source (5s timeout) leaves the USD column empty rather than failing the command. Which coin a chain's native token is comes from the profile (`symbol`, `coingecko_id`), so a chain without those reports no symbol and no price.
 
