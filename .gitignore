@@ -9,6 +9,9 @@ node_modules/
 dist/
 *.tsbuildinfo
 
+# Test output
+coverage/
+
 # Environment files (contain secrets)
 .env
 .env.local
