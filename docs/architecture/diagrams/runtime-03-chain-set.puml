@@ -1,0 +1,122 @@
+@startuml runtime-03-chain-set
+' Runtime scenario 3 - verify before write.
+' Canonical source for docs/architecture/arc42.md section 6.3.
+' evm chain set is the most elaborate write path in the CLI: a local edit that
+' takes a network round trip in order to be correct. evm explorer set has the
+' same shape with a key probe in place of the chain-id check.
+
+title Runtime scenario 3 - verify before write (evm chain set)
+
+actor Operator
+participant "chain set handler" as H
+participant "lib/chains" as Ch
+participant "lib/profile-file" as PF
+participant "lib/rpc" as Rpc
+participant "RPC endpoint" as Node
+database "profile YAML" as File
+
+Operator -> H: evm chain set base https://base.example/rpc [-H name:value] [--no-verify --chain-id N]
+activate H
+
+H -> H: chain name matches the permitted pattern
+H -> Ch: resolveProfileTarget(options.profile)
+activate Ch
+Ch --> H: name and path
+deactivate Ch
+
+alt profile file does not exist
+  H -> Operator: "Profile not found", exit 1
+  note left of H
+    Only the default profile is created on
+    demand. A -p naming anything else is a
+    typo rather than a request for a new file.
+    readProfileDocument would happily start an
+    empty document, so the handler checks first.
+  end note
+end
+
+H -> PF: readProfileDocument(path)
+activate PF
+PF -> File: read
+File --> PF: text
+PF --> H: YAML Document, comments and key order intact
+deactivate PF
+H -> PF: getChain(doc, chain)
+activate PF
+PF --> H: existing entry, or undefined
+deactivate PF
+
+alt --no-verify
+  note right of H
+    Requires --chain-id, because the check
+    being skipped is the only source of
+    that value. The escape hatch for a node
+    that is not running yet.
+  end note
+  H -> H: chainId = the given --chain-id
+else default: verify against the endpoint
+  H -> Ch: buildEndpoint(rpcUrl, headers)
+  activate Ch
+  note right of Ch
+    Environment references are resolved only
+    to reach the endpoint, so an unverified
+    entry can name variables absent from
+    this shell.
+  end note
+  Ch --> H: endpoint, or a throw
+  deactivate Ch
+  H -> Rpc: createDetectingProvider(endpoint)
+  activate Rpc
+  Rpc --> H: provider with network detection on
+  deactivate Rpc
+  H -> Node: eth_chainId, raced against a 5 s timer
+  activate Node
+  Node --> H: chain id, or no response
+  deactivate Node
+  H -> H: provider.destroy() in finally
+
+  alt no response, or the id contradicts --chain-id
+    H -> Operator: reports what the endpoint said and that nothing was written, exit 1
+  end
+  H -> H: chainId = the id the endpoint reported
+end
+
+H -> Ch: loadBundledChains()
+activate Ch
+note right of Ch
+  Matched on chain id, not on chain name,
+  so a fork of a known chain inherits its
+  symbol, coingecko_id and explorer_api.
+  Best-effort: an unreadable bundle just
+  means no suggestions.
+end note
+Ch --> H: bundled entries
+deactivate Ch
+H -> H: precedence per field:\nexplicit option, then existing entry, then bundled
+
+H -> PF: setChain(doc, chain, edit)
+activate PF
+note right of PF
+  An existing mapping is edited in place so
+  its comments survive; anything else is
+  replaced with a freshly built entry in the
+  canonical field order.
+end note
+PF --> H: document mutated
+deactivate PF
+H -> PF: writeProfileDocument(path, doc)
+activate PF
+PF -> File: write to path.pid.tmp at mode 0600, then rename
+note right of PF
+  An interrupted edit cannot truncate a
+  working profile. On failure the temp file
+  is unlinked and the error propagates.
+end note
+File --> PF: ok
+PF --> H: written
+deactivate PF
+
+H -> Operator: reports added or updated, and the fields now stored
+deactivate H
+
+@enduml

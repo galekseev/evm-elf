@@ -1,0 +1,99 @@
+@startuml runtime-01-fanout-read
+' Runtime scenario 1 - a fan-out read.
+' Canonical source for docs/architecture/arc42.md section 6.1.
+' Example: evm wallet balance WALLET -c base,mainnet
+' contract owner, contract code and contract proxy-info follow the same shape and
+' differ only in what they do inside the loop.
+
+title Runtime scenario 1 - fan-out read (evm wallet balance)
+
+actor Operator
+participant "index.ts" as Boot
+participant "src/cli/wallet.ts" as Def
+participant "balance handler" as H
+participant "lib/chains" as Ch
+participant "lib/rpc" as Rpc
+participant "JSON-RPC endpoint" as Node
+participant "lib/prices" as Px
+
+Operator -> Boot: evm wallet balance 0x... -c base,mainnet
+activate Boot
+Boot -> Boot: loadEnv() - ./.env then the config directory .env,\nonce, never overwriting a set variable
+note right of Boot
+  Loaded here rather than per handler.
+  Thirteen of twenty-one handlers used to
+  call it and eight did not, so a variable
+  set only in a .env file was visible to
+  some commands and invisible to others.
+end note
+Boot -> Def: program.parseAsync()
+activate Def
+Def -> Def: parser rejects conflicting options (-c with -xc)
+Def -> H: balanceCommand(wallet, options)
+deactivate Def
+activate H
+
+H -> H: resolveAddress() - address, private key, or\nthe name of a variable holding either
+H -> Ch: loadProfile(options.profile)
+activate Ch
+note right of Ch
+  Throws. A missing or malformed profile
+  leaves nothing to fan out over.
+end note
+Ch --> H: RpcProfile
+deactivate Ch
+H -> Ch: selectChains(-c, -xc, profile)
+activate Ch
+Ch --> H: ordered chain names
+deactivate Ch
+
+loop for each chain, sequentially
+  H -> Ch: resolveChain(name, profile)
+  activate Ch
+  note right of Ch
+    Never throws. Six distinct failures
+    become a populated error field:
+    not in profile, no chain_id, no rpc_url,
+    unresolved environment reference,
+    malformed URL, unreachable endpoint.
+  end note
+  Ch --> H: ResolvedChain
+  deactivate Ch
+
+  alt endpoint resolved
+    H -> Rpc: createProvider(endpoint, chainId)
+    activate Rpc
+    Rpc --> H: JsonRpcProvider, chain id pinned by staticNetwork
+    deactivate Rpc
+    H -> Node: eth_getBalance and eth_getTransactionCount(pending),\nunder one Promise.all
+    activate Node
+    Node --> H: results, or a throw caught into result.error
+    deactivate Node
+    H -> H: provider.destroy() in finally
+  else no endpoint
+    H -> H: push a placeholder row carrying the error,\nwith balance, balanceEth and nonce as zeros
+  end
+end
+
+H -> Px: resolvePriceSource().getNativeUsdPrices(distinct chains)
+activate Px
+note right of Px
+  One batched request for the whole run,
+  after the loop, 5 s timeout.
+  Never throws: a failure yields no prices.
+end note
+Px --> H: Map of chain id to price or null
+deactivate Px
+
+H -> Operator: table on stdout, or JSON with a per-row error field
+note left of H
+  Exit 0 even when every chain failed.
+  A script must read the rows, not the
+  exit code - and the zeroed placeholder
+  means summing balanceEth without
+  checking error under-counts silently.
+end note
+deactivate H
+deactivate Boot
+
+@enduml

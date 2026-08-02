@@ -1,0 +1,29 @@
+@startuml c4-01-context
+' C4 Level 1 - System context for evm-elf.
+' Canonical source for the context diagram in docs/architecture/arc42.md section 3.
+' Needs PlantUML 1.2021.x or newer, which bundles C4-PlantUML in its standard library.
+
+!include <C4/C4_Context>
+
+title evm-elf - C4 Level 1: system context
+
+Person(operator, "Operator", "Developer or operations engineer working on contracts deployed at the same address on several EVM chains. Holds the private key and decides when a plan becomes a broadcast.")
+
+System(evmelf, "evm-elf", "Node.js command-line tool installed as the binary evm. One cold process per invocation: read configuration, fan out across chains, print, exit. No server, no database, no state carried between runs.")
+
+SystemDb_Ext(configdir, "Configuration directory", "On the operator machine, outside the installed package. Holds one YAML file per profile at mode 0600, the profiles/.default pointer, and an operator-authored .env. The only writable dependency.")
+
+System_Ext(rpc, "JSON-RPC endpoints", "One endpoint per configured chain, named by the profile. The only load-bearing outbound dependency: without it a chain contributes an error row.")
+
+System_Ext(coingecko, "CoinGecko", "simple/price. Supplies the USD column of wallet balance. Best-effort by contract: any failure empties the column and the command still exits 0.")
+
+System_Ext(explorers, "Block explorers", "Etherscan v2, Blockscout, and any Etherscan-compatible per-chain explorer_api. Supply verified names, creation transactions and upgrade history. Best-effort: a failure omits fields.")
+
+Rel(operator, evmelf, "Runs a subcommand", "argv, environment variables")
+Rel_U(evmelf, operator, "Table or JSON on stdout, diagnostics on stderr, exit 0 or 1", "tty or pipe")
+Rel(evmelf, configdir, "Reads the profile in use; writes through a temp file, chmod 0600, then rename", "POSIX file I/O")
+Rel(evmelf, rpc, "eth_* reads; broadcasts transactions signed locally", "HTTP JSON-RPC")
+Rel(evmelf, coingecko, "One batched price request per invocation, 5 s timeout", "HTTPS GET")
+Rel(evmelf, explorers, "Ordered walk, stopping at the first source that answers", "HTTPS, Etherscan dialect")
+
+@enduml

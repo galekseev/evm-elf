@@ -1,0 +1,61 @@
+@startuml c4-03-component-configuration
+' C4 Level 3 - Components of the configuration and profile subsystem.
+' Canonical source for docs/architecture/arc42.md section 5.2.
+
+!include <C4/C4_Component>
+
+title evm-elf - C4 Level 3: configuration and profile subsystem
+
+Container_Boundary(handlers, "Command handlers (src/commands)") {
+  Component(profilecmds, "evm profile", "src/commands/profile, 5 files", "list, create, clone, remove, set-default. Owns whole profile files.")
+  Component(chaincmds, "evm chain", "src/commands/chain, 3 files", "list, set, remove. Owns the chains section of one profile.")
+  Component(explorercmds, "evm explorer", "src/commands/explorer, 3 files", "list, set, remove. Owns the explorers section of one profile.")
+  Component(readcmds, "Fan-out read and write handlers", "src/commands/wallet, src/commands/contract", "Consumers only. Never write to a profile.")
+}
+
+Container_Boundary(libs, "Shared libraries (src/lib)") {
+  Component(env, "env", "src/lib/env.ts, 125 lines", "Bottom of the dependency graph. Locates the package root by walking up to the bundled profile; computes the config, profiles and pointer paths as module-evaluation constants; loads ./.env then the config directory .env once, never overwriting; resolves environment references in a throwing and a non-throwing variant; answers which profile is in use and which of three sources chose it.")
+
+  Component(chains, "chains", "src/lib/chains.ts, 320 lines", "Fan-in 19, the hub. Name or path to profile path; parse and validate the file; -c / -xc to an ordered chain list; chain name to a usable endpoint. resolveChain never throws, loadProfile does.")
+
+  Component(profilesmod, "profiles", "src/lib/profiles.ts, 158 lines", "Whole-file operations: seed from the bundled profile, create, clone, delete, chmod 0600 after every copy, and the .default pointer.")
+
+  Component(profilefile, "profile-file", "src/lib/profile-file.ts, 202 lines", "Entry-level edits through the YAML Document API so comments and key order survive. Writes to the target path suffixed with the process id and .tmp, at mode 0600, then renames.")
+
+  Component(fserrors, "fs-errors", "src/lib/fs-errors.ts, 33 lines", "A write or delete refused on permissions is restated in terms of the profile and the directory that refused it, because the temporary file it failed on is already unlinked. Anything else passes through as the system reported it.")
+
+  Component(mask, "mask", "src/lib/mask.ts, 22 lines", "Display masking. An environment reference prints as written and gains an (unset) marker; anything else is treated as a literal secret and reduced to four trailing characters.")
+
+  Component(types, "types", "src/types.ts, 347 lines", "Profile and chain entry shapes, and one result interface per subcommand.")
+}
+
+ContainerDb_Ext(store, "Profile store", "YAML, mode 0600", "One file per profile, plus profiles/.default")
+ContainerDb_Ext(bundled, "Bundled profile", "config/default-profile.yaml", "14 chains, shipped in the package")
+ContainerDb_Ext(dotenv, "Environment file", "dotenv format", "./.env then the config directory .env. Never written by the CLI.")
+
+Rel(profilecmds, profilesmod, "Creates, clones, removes, points the default")
+Rel(profilecmds, chains, "Resolves paths, counts chains")
+Rel(profilecmds, env, "Asks which profile is in use and why")
+Rel(chaincmds, profilefile, "Edits one chain entry")
+Rel(chaincmds, chains, "Resolves the profile, builds the endpoint to verify against")
+Rel(explorercmds, profilefile, "Edits one explorers key")
+Rel(explorercmds, mask, "Masks keys for table output")
+Rel(chaincmds, mask, "Masks header values for table output")
+Rel(readcmds, chains, "loadProfile, selectChains, resolveChain")
+
+Rel(chains, env, "Paths, environment reference resolution, default-profile name")
+Rel(chains, profilesmod, "Seeds the default profile on demand")
+Rel(chains, types, "Profile and chain shapes", "type-only")
+Rel(profilesmod, env, "Profiles directory, pointer path, bundled profile path")
+Rel(profilesmod, fserrors, "Restates a refused create, copy, delete or pointer write")
+Rel(profilefile, fserrors, "Restates a refused entry rewrite")
+Rel(profilefile, types, "ChainConfig", "type-only")
+
+Rel(env, dotenv, "Reads twice per invocation, never overwriting a set variable")
+Rel(profilesmod, store, "Copies, deletes, writes the pointer")
+Rel(profilefile, store, "Atomic rewrite: temp file, chmod 0600, rename")
+Rel(chains, store, "Reads the profile in use")
+Rel(profilesmod, bundled, "Copies on first run and on profile create")
+Rel(chains, bundled, "Reads metadata to fill in by chain id")
+
+@enduml

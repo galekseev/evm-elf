@@ -1,6 +1,18 @@
 {
   "version": 1,
   "skills": {
+    "arc42-c4": {
+      "source": "marvinrichter/clarc",
+      "sourceType": "github",
+      "skillPath": "skills/arc42-c4/SKILL.md",
+      "computedHash": "493fc0bc47409ddbac70978635b10d6b7a3415bfb8f583feabb9c3b5540003a2"
+    },
+    "bdd-practices": {
+      "source": "majiayu000/claude-skill-registry",
+      "sourceType": "github",
+      "skillPath": "skills/data/bdd-practices/SKILL.md",
+      "computedHash": "584a2fc280936df0d18319484b925c2063f99f1e161d6061526dfc2145eedb6b"
+    },
     "creating-pr": {
       "source": "spencerpauly/awesome-cursor-skills",
       "sourceType": "github",

@@ -1,0 +1,104 @@
+@startuml runtime-02-signing-write
+' Runtime scenario 2 - a signing write and the --exec gate.
+' Canonical source for docs/architecture/arc42.md section 6.2.
+' Shape shared by all four signing commands: wallet send, wallet set-nonce,
+' contract transfer-ownership, contract proxy-upgrade.
+' The static-call step shown here is the contract pair; wallet send substitutes
+' a balance and fee read under --all.
+
+title Runtime scenario 2 - signing write with the --exec gate (evm contract proxy-upgrade)
+
+actor Operator
+participant "handler" as H
+participant "lib/wallet" as W
+participant "lib/chains" as Ch
+participant "lib/rpc" as Rpc
+participant "JSON-RPC endpoint" as Node
+
+Operator -> H: evm contract proxy-upgrade PROXY NEW_IMPL\n-c base --private-key DEPLOYER_PK [--exec]
+activate H
+
+group Local validation - no network, no key needed
+  H -> H: addresses well formed, exactly one chain,\namounts parseable, option combination legal
+  alt invalid
+    H -> Operator: red line on stderr, exit 1
+  end
+end
+
+H -> W: resolvePrivateKey(flagValue)
+activate W
+note right of W
+  64 hex characters is the key itself.
+  Anything else is the name of an
+  environment variable holding one.
+  The resolved value is never logged.
+end note
+W --> H: private key, in memory only
+deactivate W
+
+H -> Ch: loadProfile, resolveChain
+activate Ch
+Ch --> H: ResolvedChain
+deactivate Ch
+H -> Rpc: createProvider(endpoint, chainId)
+activate Rpc
+Rpc --> H: provider, chain id pinned
+deactivate Rpc
+
+group On-chain preconditions
+  H -> Node: eth_getCode(proxy), eth_getStorageAt(admin slot),\nProxyAdmin.owner()
+  activate Node
+  Node --> H: code, admin, admin owner
+  deactivate Node
+  alt structural: no code at the proxy, empty admin slot, or an EOA admin
+    H -> Operator: error in both modes, exit 1
+    note left of H
+      The address is not the kind of proxy
+      this command upgrades, so there is
+      nothing to plan either.
+    end note
+  end
+end
+
+H -> Node: eth_call - static-call the upgrade transaction
+activate Node
+Node --> H: success, or a revert reason
+deactivate Node
+
+alt --exec not given (default)
+  H -> Operator: prints the plan, the warnings, and the static-call result
+  H -> Operator: exit 0
+  note left of H
+    Exit 0 even when the static call reverted.
+    The dry run reports; it does not gate.
+  end note
+else --exec given
+  alt static call reverted
+    H -> Operator: "static call reverted, not sending", exit 1
+  else implementation has no code
+    H -> Operator: refused, exit 1
+  else
+    note right of H
+      "Signer is not the admin owner" stays a
+      warning under --exec: the static call
+      catches it if it matters, and the
+      operator may be simulating for someone else.
+    end note
+    H -> Node: eth_sendRawTransaction - signed locally by ethers
+    activate Node
+    Node --> H: transaction hash
+    H -> Node: await receipt
+    Node --> H: receipt
+    deactivate Node
+    H -> Node: re-read the implementation slot
+    activate Node
+    Node --> H: on-chain value after the upgrade
+    deactivate Node
+    H -> Operator: reports the value actually on chain, exit 0
+  end
+end
+
+H -> H: provider.destroy() in finally
+deactivate H
+
+@enduml
