@@ -25,6 +25,12 @@
       "skillPath": "resources/fixing-broken-links/SKILL.md",
       "computedHash": "4d0859d9077f41f26533a3229d9320499f7ad3b632d9bc674fcf1647ed92d2a6"
     },
+    "node-testing": {
+      "source": "Paldom/node-skills",
+      "sourceType": "github",
+      "skillPath": "skills/node-testing/SKILL.md",
+      "computedHash": "39ad5a5f9e5aa753d102d5bb201bfbb3daa0da0df077b1f2ecad9327ea740a96"
+    },
     "readme-creator": {
       "source": "mblode/agent-skills",
       "sourceType": "github",
@@ -42,6 +48,12 @@
       "sourceType": "github",
       "skillPath": "resources/verifying-markdown-formatting/SKILL.md",
       "computedHash": "fc4183387e6d8a7202e1693607f9faa29ecbf166af3bcd8c672dbf34bd4100af"
+    },
+    "working-with-legacy-code": {
+      "source": "wondelai/skills",
+      "sourceType": "github",
+      "skillPath": "working-with-legacy-code/SKILL.md",
+      "computedHash": "df7edc19123ea872066f2421592cc6ed08f8cefb8e6d34d154703840975c3b91"
     },
     "writing-commit-messages": {
       "source": "spencerpauly/awesome-cursor-skills",

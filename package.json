@@ -40,7 +40,15 @@
     "prepublishOnly": "npm run clean && npm run lint && npm run typecheck",
     "release": "npm version patch && git push --follow-tags",
     "evm": "tsx index.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:unit": "vitest run --project unit",
+    "test:integration": "vitest run --project integration",
+    "test:acceptance": "vitest run --project acceptance",
+    "test:characterization": "vitest run --project characterization",
+    "test:coverage": "vitest run --coverage",
     "typecheck": "tsc --noEmit",
+    "typecheck:test": "tsc -p test",
     "lint": "eslint .",
     "clean": "rm -rf dist"
   },
@@ -56,8 +64,10 @@
     "@types/node": "^22.10.7",
     "@typescript-eslint/eslint-plugin": "^8.21.0",
     "@typescript-eslint/parser": "^8.21.0",
+    "@vitest/coverage-v8": "^4.1.10",
     "eslint": "^9.18.0",
     "tsx": "^4.19.2",
-    "typescript": "^5.7.3"
+    "typescript": "^5.7.3",
+    "vitest": "^4.1.10"
   }
 }
