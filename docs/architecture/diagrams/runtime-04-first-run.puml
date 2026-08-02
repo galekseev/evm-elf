@@ -1,0 +1,115 @@
+@startuml runtime-04-first-run
+' Runtime scenario 4 - first run and profile resolution.
+' Canonical source for docs/architecture/arc42.md section 6.4.
+' This is the path every command shares before it does anything specific, and the
+' one that decides which chain list the rest of the invocation fans out across.
+
+title Runtime scenario 4 - first run, and which profile a command uses
+
+actor Operator
+participant "index.ts" as Boot
+participant "lib/env" as Env
+participant "lib/chains" as Ch
+participant "lib/profiles" as Pf
+database "config directory" as Dir
+database "bundled profile" as Bundle
+
+== Module evaluation, before any command runs ==
+
+Operator -> Boot: evm - any subcommand at all
+activate Boot
+Boot -> Env: import
+activate Env
+Env -> Env: findPackageRoot() - walk up from this file until\nconfig/default-profile.yaml is found
+note right of Env
+  A fixed relative path would not work: this
+  module sits at src/lib when run from source
+  through tsx, and at dist/src/lib once compiled.
+  Failing to find it is the documented
+  "Could not locate bundled config/default-profile.yaml".
+end note
+Env -> Env: USER_CONFIG_DIR = EVM_ELF_CONFIG_DIR,\nelse XDG_CONFIG_HOME/evm-elf,\nelse ~/.config/evm-elf
+note right of Env
+  Computed at module evaluation, which is why
+  neither of those two variables can come from
+  a .env file: the path of the .env is derived
+  from them. The dependency is circular and is
+  resolved in the documentation, not in code.
+end note
+Env --> Boot: path constants
+deactivate Env
+
+== Environment, loaded exactly once ==
+
+Boot -> Env: loadEnv()
+activate Env
+Env -> Dir: dotenv ./.env, then the config directory .env
+note right of Env
+  dotenv never overwrites a variable that is
+  already set, so precedence is:
+  real environment, then project .env,
+  then user .env.
+end note
+Dir --> Env: variables merged into process.env
+Env --> Boot: done
+deactivate Env
+
+== Which profile, and why that one ==
+
+Boot -> Ch: handler calls loadProfile(options.profile)
+activate Ch
+alt -p given
+  Ch -> Ch: use that name or path
+else nothing given
+  Ch -> Env: resolveDefaultProfile()
+  activate Env
+  Env -> Env: EVM_ELF_PROFILE wins
+  Env -> Dir: else read profiles/.default
+  Dir --> Env: pointer contents, or nothing
+  Env -> Env: else the built-in name "default"
+  note right of Env
+    Returns the source alongside the name.
+    Carrying the provenance is what lets
+    "Profile not found" say where the name
+    came from, and lets evm profile list
+    explain its own answer.
+  end note
+  Env --> Ch: name and source
+  deactivate Env
+end
+
+Ch -> Ch: resolveProfilePath() - a bare name is checked against the\npermitted pattern and looked up in the profiles directory,\nwith a .yml fallback; anything path-like is used as given
+
+alt file missing and the name is exactly "default"
+  Ch -> Pf: ensureDefaultProfile(path)
+  activate Pf
+  Pf -> Bundle: copyFile with COPYFILE_EXCL
+  note right of Pf
+    Never overwrites, so a concurrent run
+    that got there first wins. copyFile
+    carries the source permissions across
+    and the bundled profile is world-readable,
+    so every copy is chmod 0600 afterwards.
+  end note
+  Bundle --> Pf: 14 chains, one explorers entry
+  Pf -> Dir: write profiles/default.yaml at mode 0600
+  Pf -> Operator: "Created ... from the bundled default profile" on stderr
+  Pf --> Ch: seeded
+  deactivate Pf
+else file missing and the name is anything else
+  Ch -> Operator: "Profile not found: PATH", naming where the name came from
+end
+
+Ch -> Dir: read and validate the profile
+Dir --> Ch: chains mapping, optional explorers mapping
+note right of Ch
+  An unknown key under a chain rejects the
+  whole file. An unknown key at the top level
+  is ignored, which is why a misspelled
+  "chains" reads as a missing one.
+end note
+Ch --> Boot: RpcProfile - the chain list the rest of the run fans out across
+deactivate Ch
+deactivate Boot
+
+@enduml

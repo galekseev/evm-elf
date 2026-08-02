@@ -1,0 +1,67 @@
+@startuml c4-05-component-contract-inspection
+' C4 Level 3 - Components inside the contract inspection subsystem.
+' Canonical source for docs/architecture/arc42.md section 5.4.
+'
+' src/commands/contract/proxy-info.ts is 753 lines, 14.6 percent of the codebase and
+' more than twice the next largest file. The boxes inside its boundary are functions,
+' not files: this level exists precisely because the file has internal structure that
+' the file system does not show, and because it is the top refactoring candidate.
+
+!include <C4/C4_Component>
+
+title evm-elf - C4 Level 3: contract inspection (evm contract proxy-info)
+
+Container_Boundary(pi, "proxy-info.ts (753 lines, one file)") {
+  Component(entry, "proxyInfoCommand", "lines 643-708", "Validates the address, rejects --short with --full, picks one of three modes, loads the profile, selects chains, then loops sequentially. Per chain it builds a provider and an ExplorerChain, calls the detector, and destroys the provider in finally. Accumulates whether any explorer lookup was skipped.")
+
+  Component(detect, "inspectProxy", "lines 281-407", "The detector. Reads bytecode once; a clone pattern short-circuits; otherwise the three EIP-1967 slots are read in one Promise.all and classified into seven cases: minimal, beacon, transparent, uups, proxy-admin, beacon-contract, none. Depth of the reads is set by the mode, not by the case.")
+
+  Component(enrich, "enrichFull", "lines 179-280", "Only under --full. Chain-side diagnostics plus explorer-side lookups: implementation codehash, verified name, initialization state, pending owner, paused, balance, account classification, upgrade history, creation.")
+
+  Component(readers, "Single-purpose readers", "tryOwner, tryUpgradeInterfaceVersion, checkErc1822, findManagedProxy, describeAccount, readInitialized", "Each wraps one contract call or storage read and swallows its own failure, so an absent function narrows the answer rather than failing the chain.")
+
+  Component(render, "Renderers", "printResult, printShortTable, printFullExtras, printUpgradeVersion, printCodeHashSummary, reportSkippedLookups", "Three output modes plus two run-level notes. printCodeHashSummary compares implementation codehashes across chains and needs at least two chains that produced one. reportSkippedLookups prints at most once per run, on stderr.")
+}
+
+Container_Boundary(shared, "Shared libraries") {
+  Component(proxylib, "proxy", "src/lib/proxy.ts", "EIP-1967 slot constants, minimal ABIs, EIP-1167 and EIP-7511 clone patterns, the OZ v5 Initializable slot, the Upgraded and AdminChanged topics, getStorageAddress, hasCode, revertReason.")
+  Component(chainslib, "chains", "src/lib/chains.ts", "loadProfile, selectChains, resolveChain")
+  Component(rpclib, "rpc", "src/lib/rpc.ts", "createProvider, pinned to the configured chain id")
+  Component(expl, "explorer", "src/lib/explorer", "ExplorerChain: the ordered per-operation walk, the answering source, and the skipped flag.")
+  Component(typeslib, "types", "src/types.ts", "ProxyType, ProxyInfoResult, ContractProxyInfoOptions")
+}
+
+Container_Boundary(siblings, "Sibling handlers sharing the same primitives") {
+  Component(owner, "contract owner", "src/commands/contract/owner.ts", "owner() across chains")
+  Component(code, "contract code", "src/commands/contract/code.ts", "Deployed bytecode presence and size")
+  Component(upgrade, "contract proxy-upgrade", "src/commands/contract/proxy-upgrade.ts", "Reads the admin from the EIP-1967 slot rather than taking a ProxyAdmin argument. Three structural conditions are errors in both modes; --exec turns two of the three dry-run warnings into refusals.")
+  Component(xferown, "contract transfer-ownership", "src/commands/contract/transfer-ownership.ts", "Static-call then broadcast, single chain only")
+}
+
+System_Ext(node, "JSON-RPC endpoint", "eth_getCode, eth_getStorageAt, eth_call")
+System_Ext(explapi, "Block explorers", "Creation, verified source, logs by topic")
+
+Rel(entry, detect, "Once per selected chain")
+Rel(detect, enrich, "Only in full mode")
+Rel(detect, readers, "Per detected case")
+Rel(enrich, readers, "Account classification, initialization state")
+Rel(entry, render, "Dispatches on mode, then the run-level notes")
+
+Rel(entry, chainslib, "loadProfile, selectChains, resolveChain")
+Rel(entry, rpclib, "createProvider, destroy in finally")
+Rel(entry, expl, "Constructs one ExplorerChain per chain")
+Rel(detect, proxylib, "Slots, clone patterns, ABIs")
+Rel(enrich, proxylib, "Initializable slot, Upgraded topic, ABIs")
+Rel(enrich, expl, "getContractInfo, getLogsByTopic, getContractCreation")
+Rel(readers, proxylib, "ABIs, getStorageAddress, hasCode")
+Rel(entry, typeslib, "ProxyInfoResult", "type-only")
+
+Rel(upgrade, proxylib, "Admin slot, ProxyAdmin ABI, revertReason")
+Rel(xferown, proxylib, "Ownable ABI, revertReason")
+Rel(owner, proxylib, "Ownable ABI")
+Rel(code, rpclib, "createProvider")
+
+Rel(rpclib, node, "eth_* via ethers", "HTTP JSON-RPC")
+Rel(expl, explapi, "Ordered walk", "HTTPS")
+
+@enduml

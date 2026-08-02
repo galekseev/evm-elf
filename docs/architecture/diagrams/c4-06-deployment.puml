@@ -1,0 +1,57 @@
+@startuml c4-06-deployment
+' C4 Deployment view - distribution and where things run.
+' Canonical source for docs/architecture/arc42.md section 7.
+'
+' There is no infrastructure to draw: no Dockerfile, no compose file, no Kubernetes
+' manifest, no Terraform and no cloud resource exists in the repository. The only
+' machines involved are a GitHub Actions runner at release time and the operator's
+' own workstation at run time.
+
+!include <C4/C4_Deployment>
+
+title evm-elf - deployment and distribution
+
+Deployment_Node(dev, "Maintainer workstation", "any OS with Node.js and git") {
+  Container(repo, "Working copy", "TypeScript sources", "npm run evm runs index.ts through tsx and reads the same configuration directory as a global install. npm version patch, then git push --follow-tags, starts a release.")
+}
+
+Deployment_Node(gh, "GitHub", "github.com") {
+  Deployment_Node(runner, "Actions runner", "ubuntu-latest, Node.js 24") {
+    Container(workflow, "Publish workflow", ".github/workflows/publish.yml", "Triggered only by a v* tag. Refuses to continue when the tag does not match the version in package.json. Runs npm ci, which fires the prepare script and compiles to dist. Then lint, then typecheck, then npm publish. No pull-request CI and no test job exist.")
+  }
+}
+
+Deployment_Node(npmreg, "npm registry", "registry.npmjs.org") {
+  Container(pkg, "@camoseed/evm-elf", "npm package, public access", "Ships dist and config only. bin maps evm to dist/index.js. engines requires Node.js 22 or newer. Published through OIDC trusted publishing, so npm attaches a provenance attestation and no long-lived token is stored.")
+}
+
+Deployment_Node(workstation, "Operator workstation", "macOS or Linux, Node.js 22 or newer") {
+  Deployment_Node(prefix, "npm global prefix", "npm install -g") {
+    Container(installed, "Installed package", "compiled JavaScript", "dist/index.js on PATH as evm, plus config/default-profile.yaml. Read-only in normal use. Installing from github: instead compiles from source during the install, because prepare runs on npm install.")
+  }
+  Deployment_Node(confdir, "Configuration directory", "EVM_ELF_CONFIG_DIR, else XDG_CONFIG_HOME/evm-elf, else ~/.config/evm-elf") {
+    ContainerDb(profilestore, "profiles/", "YAML, mode 0600", "One file per profile plus the .default pointer. Created on first use by copying the bundled profile. Survives upgrade and uninstall: npm never touches this directory.")
+    ContainerDb(userenv, ".env", "dotenv, operator-authored", "Values for environment references in profiles, and variables holding private keys. The CLI reads it and never writes it.")
+  }
+  Deployment_Node(proc, "evm process", "one cold process per invocation") {
+    Container(runtime, "Running CLI", "Node.js", "Reads configuration, fans out across chains, prints, exits. Holds a private key in memory for the duration of one invocation and never writes it anywhere.")
+  }
+}
+
+Deployment_Node(internet, "Public internet", "HTTPS") {
+  Container(rpcnodes, "JSON-RPC endpoints", "one per configured chain", "The bundled profile points 14 chains at their own public endpoints, which the profile itself documents as rate-limited under load.")
+  Container(cg, "CoinGecko", "simple/price", "Optional. 5 s timeout, failures produce no prices.")
+  Container(expl, "Block explorers", "Etherscan v2, Blockscout, per-chain explorer_api", "Optional. Missing keys drop a source before any request goes out.")
+}
+
+Rel(repo, gh, "Pushes a v* tag", "git over HTTPS")
+Rel(workflow, pkg, "npm publish with an OIDC token", "HTTPS")
+Rel(installed, pkg, "npm install -g", "HTTPS")
+Rel(proc, installed, "Executes dist/index.js")
+Rel(runtime, profilestore, "Reads; writes through temp file then rename", "POSIX")
+Rel(runtime, userenv, "Reads at startup", "POSIX")
+Rel(runtime, rpcnodes, "eth_* and signed transactions", "HTTP JSON-RPC")
+Rel(runtime, cg, "One batched price request", "HTTPS")
+Rel(runtime, expl, "Ordered walk", "HTTPS")
+
+@enduml

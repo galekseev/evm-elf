@@ -1,0 +1,48 @@
+@startuml c4-02-container
+' C4 Level 2 - Container view for evm-elf.
+' Canonical source for the container diagram in docs/architecture/arc42.md section 5.1.
+'
+' Deviation from standard C4, stated in the document: evm-elf has one deployable and
+' one process, so nothing here is separately deployable or independently runnable.
+' The boxes are the layers inside the single process, which is the decomposition the
+' import graph actually enforces.
+
+!include <C4/C4_Container>
+
+title evm-elf - C4 Level 2: containers (layers inside the one process)
+
+Person(operator, "Operator", "Runs the evm binary")
+
+System_Boundary(evmelf, "evm-elf process") {
+  Container(boot, "Bootstrap", "index.ts, 64 lines", "Loads the environment once before anything reads it, reads the version from the installed manifest, registers the five command groups, and converts a rejected handler promise into one red stderr line and exit 1.")
+
+  Container(clidefs, "Command definitions", "src/cli, 5 files, commander 12", "Declares 21 subcommands: arguments, options, defaults, mutually exclusive option pairs, and per-command help with examples. Contains no behaviour.")
+
+  Container(handlers, "Command handlers", "src/commands, 21 files", "One handler per subcommand. Validates arguments, orchestrates the shared libraries, renders a table or JSON, and chooses the exit code.")
+
+  Container(libs, "Shared libraries", "src/lib, 14 files", "Configuration discovery, profile parsing and chain resolution, profile file lifecycle, provider construction, key resolution, proxy primitives, masking, and the two outbound adapters.")
+
+  Container(types, "Type contracts", "src/types.ts, 347 lines", "Profile shape and one result interface per subcommand. Fan-in 23: every handler imports its own result shape from here. Erased at compile time.")
+}
+
+ContainerDb_Ext(profiles, "Profile store", "YAML files, mode 0600", "One file per profile plus the profiles/.default pointer, under EVM_ELF_CONFIG_DIR, else XDG_CONFIG_HOME/evm-elf, else ~/.config/evm-elf.")
+
+ContainerDb_Ext(bundled, "Bundled profile", "config/default-profile.yaml, ships in the package", "14 chains and one explorers entry. Read on exactly three occasions and never merged into a live profile.")
+
+System_Ext(rpc, "JSON-RPC endpoints", "One per configured chain")
+System_Ext(coingecko, "CoinGecko", "simple/price")
+System_Ext(explorers_ext, "Block explorers", "Etherscan v2, Blockscout, per-chain explorer_api")
+
+Rel(operator, boot, "argv, environment")
+Rel(boot, clidefs, "Registers five command groups", "in-process call")
+Rel(clidefs, handlers, "Dispatches the parsed invocation", "async action handler")
+Rel(handlers, libs, "Resolves configuration, builds providers, calls adapters", "in-process call")
+Rel(handlers, types, "Imports its own result shape", "type-only")
+Rel(boot, libs, "loadEnv(), PACKAGE_ROOT, PROFILES_DIR", "in-process call")
+Rel(libs, profiles, "Reads; writes atomically", "POSIX file I/O")
+Rel(libs, bundled, "Seeds a first-run profile; supplies metadata by chain id", "read-only")
+Rel(libs, rpc, "eth_* and signed transactions", "HTTP JSON-RPC via ethers")
+Rel(libs, coingecko, "Batched USD prices", "HTTPS GET")
+Rel(libs, explorers_ext, "Contract creation, verified source, logs by topic", "HTTPS")
+
+@enduml

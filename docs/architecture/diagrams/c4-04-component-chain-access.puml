@@ -1,0 +1,60 @@
+@startuml c4-04-component-chain-access
+' C4 Level 3 - Components of chain access and the two outbound adapters.
+' Canonical source for docs/architecture/arc42.md section 5.3.
+
+!include <C4/C4_Component>
+
+title evm-elf - C4 Level 3: chain access and outbound integrations
+
+Container_Boundary(handlers, "Command handlers (src/commands)") {
+  Component(balance, "wallet balance", "src/commands/wallet/balance.ts", "The only consumer of the price adapter. Fans out, then prices the whole run in one batch.")
+  Component(send, "wallet send, wallet set-nonce", "src/commands/wallet", "Signing commands. Plan by default; --exec broadcasts.")
+  Component(contract, "contract owner, code, proxy-info, transfer-ownership, proxy-upgrade", "src/commands/contract", "Reads and the two contract write operations.")
+}
+
+Container_Boundary(libs, "Shared libraries (src/lib)") {
+  Component(rpc, "rpc", "src/lib/rpc.ts, 51 lines", "The whole JSON-RPC boundary, in three functions. Parses an rpc_url in either accepted form, turning the auth-key suffix into a header; builds a provider with the configured chain id pinned via staticNetwork; and builds one detecting provider for the single caller that does not know the chain id yet. No timeout, no retry, no pooling.")
+
+  Component(wallet, "wallet", "src/lib/wallet.ts, 71 lines", "Key and address resolution. Discriminates by shape: 64 hex characters is a private key, 40 is an address, anything else is an environment variable name. Never logs the resolved value.")
+
+  Component(proxy, "proxy", "src/lib/proxy.ts, 130 lines", "Proxy primitives with no I/O policy of their own: the three EIP-1967 slots, minimal ABIs for Ownable, ProxyAdmin, beacon, ERC-1822, Ownable2Step, Pausable and Safe, the EIP-1167 and EIP-7511 clone bytecode patterns, and the OZ v5 Initializable slot.")
+
+  Component(pricesidx, "prices/index", "src/lib/prices/index.ts", "Selects a source from EVM_PRICE_SOURCE. An unrecognised value falls back to none rather than to the default, and warns on stderr so --json stays parseable.")
+  Component(pricetypes, "prices/types", "src/lib/prices/types.ts", "The PriceSource interface, keyed by chain id rather than coin symbol. Its contract states that it never throws.")
+  Component(coingecko, "prices/coingecko", "src/lib/prices/coingecko.ts", "The one network-backed implementation. One batched request, 5 s AbortSignal timeout, every failure mapped to a null price.")
+
+  Component(explidx, "explorer/index", "src/lib/explorer/index.ts", "Builds the ordered endpoint list for a chain and walks it per operation, stopping at the first source that answers. Records which source answered, and whether a lookup was skipped for want of any source.")
+  Component(explclient, "explorer/client", "src/lib/explorer/client.ts", "Etherscan-dialect HTTP calls. Every function returns null when the endpoint could not answer, which is what makes the walk move on; a valid negative answer is returned as data.")
+  Component(expltypes, "explorer/types", "src/lib/explorer/types.ts", "Source names in try order, endpoint and response shapes.")
+
+  Component(env, "env", "src/lib/env.ts", "tryResolveEnvRefs, used to drop an explorer source whose environment reference is unset before any request goes out.")
+  Component(chains, "chains", "src/lib/chains.ts", "Calls parseRpcUrl when building an endpoint, and imports the known explorer names for profile validation.")
+}
+
+System_Ext(rpcnodes, "JSON-RPC endpoints", "One per configured chain")
+System_Ext(cgapi, "CoinGecko", "api.coingecko.com/api/v3/simple/price")
+System_Ext(explapi, "Block explorers", "Etherscan v2, Blockscout, per-chain explorer_api")
+
+Rel(balance, rpc, "createProvider per chain, destroy in finally")
+Rel(send, rpc, "createProvider per chain, destroy in finally")
+Rel(contract, rpc, "createProvider per chain, destroy in finally")
+Rel(send, wallet, "resolvePrivateKey")
+Rel(balance, wallet, "resolveAddress: address, key, or variable name")
+Rel(contract, proxy, "Slots, ABIs, clone patterns, revert-reason extraction")
+Rel(balance, pricesidx, "resolvePriceSource().getNativeUsdPrices(chains)")
+Rel(contract, explidx, "getContractCreation, getContractInfo, getLogsByTopic")
+
+Rel(pricesidx, coingecko, "Instantiates")
+Rel(pricesidx, pricetypes, "Implements", "type-only")
+Rel(coingecko, pricetypes, "Implements", "type-only")
+Rel(explidx, explclient, "Delegates one call per endpoint in the walk")
+Rel(explidx, expltypes, "Source names and shapes", "type-only")
+Rel(explidx, env, "tryResolveEnvRefs on each configured key")
+Rel(chains, rpc, "parseRpcUrl")
+Rel(chains, explidx, "EXPLORER_NAMES, isExplorerName")
+
+Rel(rpc, rpcnodes, "eth_* and eth_sendRawTransaction", "HTTP JSON-RPC via ethers")
+Rel(coingecko, cgapi, "GET simple/price", "HTTPS")
+Rel(explclient, explapi, "GET module/action queries", "HTTPS")
+
+@enduml
