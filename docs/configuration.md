@@ -239,7 +239,27 @@ A key that exists but is rejected is a different case, and a quiet one: the sour
 
 The CLI writes profiles to a temporary file and renames it into place, so an interrupted edit can't truncate a working profile. New profile files and the `.default` pointer are created with owner-only permissions, `0600`, because a profile can hold a literal API key in a header or in `explorers`.
 
-Editing commands preserve what they don't change. `evm chain set` and `evm explorer set` each rewrite a single entry and keep your comments and key order, and `evm profile clone` copies the file byte for byte.
+Editing commands preserve what they don't change. `evm chain set` and `evm explorer set` each rewrite a single entry, leaving standalone comments and every other entry exactly as they were, and `evm profile clone` copies the file byte for byte.
+
+Two things don't survive an edit. A comment trailing a field the command rewrites is dropped, because the field is replaced rather than patched — `evm chain set` always writes `rpc_url`, so a comment on that line goes with it. And clearing a field and setting it again appends it at the end of its entry rather than restoring its position, since the key was removed in between. Neither costs anything if you put comments on their own line above the entry they describe, which is where they survive both.
+
+One more placement rule is worth knowing, because a blank line decides it. `evm explorer set` creates a missing `explorers` section above `chains`, since it's two lines and shouldn't sit below every chain you have. A comment separated from everything below it by a blank line belongs to the file and stays at the top when that happens; a comment flush against `chains:` belongs to `chains` and moves down with it. So leave a blank line under a file header, which is what `evm profile create --empty` writes:
+
+```yaml
+# Ops profile — do not commit
+
+chains:
+  base:
+    chain_id: 8453
+    rpc_url: ${BASE_RPC_URL}
+```
+
+A write the filesystem refuses names the profile it was writing and the directory to look at, rather than the temporary file it happened to fail on:
+
+```text
+Could not write ~/.config/evm-elf/profiles/myproject.yaml: permission denied. Nothing written.
+Check the directory: ls -ld ~/.config/evm-elf/profiles
+```
 
 > [!CAUTION]
 > `evm chain list` and `evm explorer list` mask secrets in their tables, but their `--json` output prints the profile as stored, literal keys included. Don't pipe it anywhere you wouldn't paste a secret.
