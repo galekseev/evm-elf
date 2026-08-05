@@ -6,7 +6,7 @@ import chalk from 'chalk';
 import { formatEther } from 'ethers';
 import type { BalanceResult, WalletBalanceOptions } from '../../types.js';
 import { resolveAddress } from '../../lib/wallet.js';
-import { loadProfile, resolveChain, selectChains } from '../../lib/chains.js';
+import { loadProfile, nativeTokenLabel, resolveChain, selectChains } from '../../lib/chains.js';
 import { createProvider } from '../../lib/rpc.js';
 import { resolvePriceSource, type PriceChain } from '../../lib/prices/index.js';
 
@@ -149,7 +149,7 @@ export async function balanceCommand(wallet: string, options: WalletBalanceOptio
       result.chain.padEnd(COL.chain),
       result.chainId.toString().padEnd(COL.chainId),
     ];
-    const token = chalk.dim((result.symbol ?? '-').padEnd(COL.token));
+    const token = chalk.dim(nativeTokenLabel(result.symbol).padEnd(COL.token));
 
     if (result.error) {
       const cells = [...head, '-'.padEnd(COL.balance), token];

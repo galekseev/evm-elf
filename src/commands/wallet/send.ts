@@ -10,7 +10,7 @@
 import chalk from 'chalk';
 import { Wallet, formatEther, isAddress, parseEther } from 'ethers';
 import type { SendResult, WalletSendOptions } from '../../types.js';
-import { loadProfile, resolveChain, selectChains } from '../../lib/chains.js';
+import { loadProfile, nativeTokenLabel, resolveChain, selectChains } from '../../lib/chains.js';
 import { createProvider } from '../../lib/rpc.js';
 import { resolvePrivateKey } from '../../lib/wallet.js';
 
@@ -83,7 +83,7 @@ export async function sendCommand(to: string, options: WalletSendOptions): Promi
   // Resolving up front costs nothing (no I/O) and gives the header a token to
   // name whenever every selected chain agrees on one.
   const resolvedChains = chains.map((chain) => resolveChain(chain, profile));
-  const symbols = new Set(resolvedChains.map((resolved) => resolved.symbol ?? ''));
+  const symbols = new Set(resolvedChains.map((resolved) => nativeTokenLabel(resolved.symbol)));
   const sharedSymbol = symbols.size === 1 ? [...symbols][0] : '';
 
   if (!quiet) {
@@ -102,9 +102,7 @@ export async function sendCommand(to: string, options: WalletSendOptions): Promi
     const chain = chains[i];
     const progress = chalk.dim(`[${i + 1}/${chains.length}]`);
     const resolved = resolvedChains[i];
-    // Suffix for an amount on this chain: the profile is the only thing that
-    // knows a chain's native token, so a chain without `symbol` gets none.
-    const token = resolved.symbol ? ` ${resolved.symbol}` : '';
+    const token = ` ${nativeTokenLabel(resolved.symbol)}`;
 
     const base: SendResult = {
       chain,

@@ -14,6 +14,7 @@ import type {
 } from '../../types.js';
 import {
   loadProfile,
+  nativeTokenLabel,
   resolveChain,
   selectChains,
   type ResolvedChain,
@@ -467,8 +468,8 @@ function printFullExtras(
 
   if (result.balanceWei) {
     const amount = formatEther(BigInt(result.balanceWei));
-    const token = result.symbol ? ` ${result.symbol}` : '';
-    line('Balance:', chalk.yellow(`${amount}${token}`) + chalk.dim(' (native funds held by this address)'));
+    const token = nativeTokenLabel(result.symbol);
+    line('Balance:', chalk.yellow(`${amount} ${token}`) + chalk.dim(' (native funds held by this address)'));
   }
 
   if (result.implementation && result.implementationVerified !== undefined) {
