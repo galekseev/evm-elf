@@ -87,7 +87,7 @@ Two fields are required, and the rest supply what an RPC endpoint can't tell the
 | `chain_id` | positive integer | Yes | Identifies the network. The provider is pinned to it, so a wrong value fails loudly instead of returning another chain's data. |
 | `rpc_url` | string | Yes | The JSON-RPC endpoint. Accepts `${VAR}` references and the auth-key shorthand described below. |
 | `headers` | mapping of string to string | No | HTTP headers sent with every RPC request, for endpoints behind a key or a proxy. |
-| `symbol` | string | No | Native token symbol shown in the `Token` column of `evm wallet balance`. |
+| `symbol` | string | No | Native token symbol, shown in the `Token` column of `evm wallet balance` and against every amount the CLI prints. Without it those read a lowercase `ether`, the unit rather than a ticker. |
 | `coingecko_id` | string | No | CoinGecko coin ID used to price the native token. Without it, that chain shows no USD value and stays out of the total. |
 | `explorer_api` | string | No | An Etherscan-compatible API base URL, replacing Etherscan v2 for this chain. |
 

@@ -126,7 +126,7 @@ evm wallet send 0x5d0F...95eB --all --private-key DEPLOYER_PK -c bsc,base,arbitr
 evm wallet send 0x5d0F...95eB --all --exec --fee-buffer 1.5 --private-key DEPLOYER_PK -xc mainnet
 ```
 
-`--value` accepts ether amounts (`0.01`, `0.01ether`) or wei (`10000000000000000wei`). The `--all` plan reads balances and gas prices, so it prints the exact amount each chain would send; `--fee-buffer` is the multiplier on that gas reserve (default `1.1`, `--all` only) and whatever the reserve does not spend stays behind as dust. `--no-wait` returns once the transactions are broadcast instead of waiting for receipts, so it needs `--exec`. Amounts are named in each chain's own token, from its `symbol` in the profile.
+`--value` accepts ether amounts (`0.01`, `0.01ether`) or wei (`10000000000000000wei`). The `--all` plan reads balances and gas prices, so it prints the exact amount each chain would send; `--fee-buffer` is the multiplier on that gas reserve (default `1.1`, `--all` only) and whatever the reserve does not spend stays behind as dust. `--no-wait` returns once the transactions are broadcast instead of waiting for receipts, so it needs `--exec`. Amounts are named in each chain's own token, from its `symbol` in the profile, falling back to a lowercase `ether` on a chain that names none.
 
 ### `set-nonce <target>`
 
@@ -401,7 +401,7 @@ The same environment supplies the `${VAR}` references in a profile, such as RPC 
 | `none` | No price lookups at all, the same as passing `--no-usd` everywhere. |
 | Anything else | Treated as `none`, with a warning on stderr. Setting the variable means you wanted to control the lookup, so an unrecognised value stops it rather than reaching for the network. |
 
-The lookup is best-effort: a failing, rate-limited or slow source (5s timeout) leaves the USD column empty rather than failing the command. Which coin a chain's native token is comes from the profile (`symbol`, `coingecko_id`), so a chain without those reports no symbol and no price.
+The lookup is best-effort: a failing, rate-limited or slow source (5s timeout) leaves the USD column empty rather than failing the command. Which coin a chain's native token is comes from the profile (`symbol`, `coingecko_id`), so a chain without those falls back to a lowercase `ether` for the token and reports no price.
 
 ## Requirements
 

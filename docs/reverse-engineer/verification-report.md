@@ -621,6 +621,14 @@ Wallet Send: 0.01 → 0xf39F…
 Also verified against a stub RPC endpoint: `skip (balance too low (0.0000000000000001 TST, gas
 reserve 0.0000231 TST))` for `--all`, and `Balance: 0.01 TST` from `proxy-info --full`.
 
+**Amended 2026-08-05.** The second of those two cases no longer holds. A chain whose entry sets
+no `symbol` now reads a lowercase `ether` rather than a bare number, from `nativeTokenLabel()` in
+`src/lib/chains.ts` — the unit's own name, as the `--value 0.01ether` syntax already uses it, and
+lowercase so it cannot be mistaken for a ticker a profile configured. The first case stands: the
+opening line of `send` still drops the token when the selected chains disagree. `--json` is
+unchanged, leaving `symbol` absent when the profile sets none, so a machine consumer can still
+tell a configured token from a fallback.
+
 ### X2. Failed rows in `wallet balance --json` carry a zero balance
 
 `docs/wallet-commands.md:70-86` describes which keys are conditionally present but not that a

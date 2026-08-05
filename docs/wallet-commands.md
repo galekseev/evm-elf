@@ -64,9 +64,10 @@ mainnet         1          0.080837487973711977      ETH      $152.03          3
 Total                                                         $168.81
 ```
 
-Four details in the output repay knowing:
+Five details in the output repay knowing:
 
 - **The** `Nonce` **column is the pending nonce**, which counts transactions in the mempool as well as mined ones.
+- **The** `Token` **column reads** `ether` **in lowercase when the chain's entry names no** `symbol`. It's the unit rather than a ticker, so a lowercase `ether` is the sign to set `symbol` on that chain.
 - `Value (USD)` **shows** `-` when the chain has no `coingecko_id` or the price lookup failed. Those chains stay out of the total, and a closing line names any that hold a balance.
 - **Amounts under $0.01 print as** `<$0.01`, so a dust balance isn't rounded to nothing.
 - `Status` **carries per-chain errors.** An unreachable endpoint reports itself there while the other chains still print.
@@ -134,7 +135,7 @@ Chain           Chain ID   Value Sent                Status
 base            8453       0.01                      will send
 ```
 
-Amounts are named in the chain's own token, taken from its `symbol` in the profile — so the same `--value 0.01` reads as `0.01 BNB` on `bsc` and `0.01 POL` on `matic`. The opening line can only name one token, so it drops the symbol when the selected chains don't agree on one, and a chain whose entry sets no `symbol` gets a bare number. The `Value Sent` column is always a bare number.
+Amounts are named in the chain's own token, taken from its `symbol` in the profile — so the same `--value 0.01` reads as `0.01 BNB` on `bsc` and `0.01 POL` on `matic`. A chain whose entry sets no `symbol` falls back to `0.01 ether`, the unit's own name in lowercase. The opening line can only name one token, so it drops the token when the selected chains don't agree on one, and the `Value Sent` column is always a bare number.
 
 The `Status` column reports one of these per chain.
 

@@ -150,7 +150,7 @@ Read from the chain, so always available:
 - Initialization state, from the OpenZeppelin v5 ERC-7201 slot or a v4 slot-0 heuristic, with a warning when a proxy looks uninitialized.
 - Owner classification as an externally owned account, a Gnosis Safe with its `threshold/owners`, or another contract.
 - `pendingOwner()` for `Ownable2Step` and `paused()` for `Pausable`, when present.
-- Native balance held by the proxy, when it isn't zero.
+- Native balance held by the proxy, when it isn't zero. It's named in the chain's own `symbol` from the profile, or a lowercase `ether` when the entry sets none.
 - The implementation codehash, plus a cross-chain comparison that reports whether the bytecode is identical everywhere or lists the variants when it isn't.
 
 Read from a block explorer, so present only when one is reachable:

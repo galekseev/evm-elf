@@ -210,6 +210,17 @@ export interface ResolvedChain {
   error?: string;
 }
 
+/** Stands in for a token an entry does not name: the unit's own name, as in `--value 0.01ether` */
+export const FALLBACK_TOKEN = 'ether';
+
+/**
+ * Name the token an amount is in. The profile is the only thing that knows a
+ * chain's native token, so an entry without `symbol` falls back to the unit.
+ */
+export function nativeTokenLabel(symbol?: string): string {
+  return symbol ?? FALLBACK_TOKEN;
+}
+
 /**
  * Parse a comma-separated chain list into names
  */
