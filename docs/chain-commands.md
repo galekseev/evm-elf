@@ -46,7 +46,7 @@ An RPC URL longer than the column is cut with an ellipsis. `--reveal` doesn't af
 
 ## `evm chain set <chain> [rpcUrl]`
 
-Adds a chain to a profile or changes an existing one, rewriting a single entry and leaving your comments and key order alone.
+Adds a chain to a profile or changes an existing one, rewriting a single entry and leaving the rest of the file alone. Standalone comments and untouched entries survive; a comment trailing a field this command rewrites does not, and neither does the position of a field you clear and set again — see [How files are written](configuration.md#how-files-are-written).
 
 ```bash
 evm chain set <chain> [rpcUrl] [-p profile] [--chain-id <id>]
