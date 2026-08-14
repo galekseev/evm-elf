@@ -29,7 +29,7 @@ Each page documents the arguments, options, output, and exit codes of one comman
 | Page | Commands |
 | --- | --- |
 | [Wallet commands](wallet-commands.md) | `balance`, `send`, `set-nonce`, `generate`, `address` |
-| [Contract commands](contract-commands.md) | `owner`, `proxy-info`, `transfer-ownership`, `proxy-upgrade`, `code` |
+| [Contract commands](contract-commands.md) | `owner`, `proxy-info`, `deploy-info`, `transfer-ownership`, `proxy-upgrade`, `code` |
 | [Profile commands](profile-commands.md) | `profile list`, `create`, `clone`, `remove`, `set-default` |
 | [Chain commands](chain-commands.md) | `chain list`, `set`, `remove` |
 | [Explorer commands](explorer-commands.md) | `explorer list`, `set`, `remove` |

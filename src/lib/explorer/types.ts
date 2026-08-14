@@ -30,7 +30,15 @@ export interface ExplorerEndpoint {
 
 export interface ContractCreation {
   txHash: string;
+  /** Immediate creator: the sender for a direct deployment, the creating contract otherwise */
   creator: string;
+  blockNumber?: number;
+  /** Creation block timestamp, unix seconds */
+  timestamp?: number;
+  /** Set when the creator was itself called by another contract */
+  factory?: string;
+  /** Init code the creation ran, including constructor arguments */
+  creationBytecode?: string;
 }
 
 export interface ExplorerContractInfo {

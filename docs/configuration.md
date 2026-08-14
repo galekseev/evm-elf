@@ -197,7 +197,11 @@ Which coin a chain's native token maps to comes from the profile. A chain withou
 
 ## Block explorer access
 
-`evm contract proxy-info` is the only command that uses an explorer. Three of its `--full` fields come from one rather than from an RPC endpoint: the verified implementation name, the upgrade history, and the creation transaction. A fourth lookup doesn't wait for `--full` — the ProxyAdmin trace to the proxy an admin address manages runs whenever the address turns out to be a ProxyAdmin, and only `-s` skips it.
+Two commands use an explorer, and they need one to different degrees.
+
+For `evm contract proxy-info` it fills in fields. Three of its `--full` ones come from an explorer rather than from an RPC endpoint: the verified implementation name, the upgrade history, and the creation transaction. A fourth lookup doesn't wait for `--full` — the ProxyAdmin trace to the proxy an admin address manages runs whenever the address turns out to be a ProxyAdmin, and only `-s` skips it.
+
+For `evm contract deploy-info` it is the starting point. Only an explorer can say which transaction created a contract, and everything that command reports follows from that transaction, so a chain without a source reports `needs an explorer API` instead of a deployment.
 
 Keys live in the `explorers` section of the profile, one per source. A single key covers every chain that source supports, so this is profile-wide rather than per chain:
 

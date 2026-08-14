@@ -2,21 +2,22 @@
 
 [Documentation](README.md) › Contract commands
 
-`evm contract` inspects ownership and proxies for a contract that lives at the same address on several chains, and performs the two write operations that follow from it. This page documents each command's arguments, options, output, and exit code.
+`evm contract` inspects ownership, proxies and deployments for a contract that lives at the same address on several chains, and performs the two write operations that follow from it. This page documents each command's arguments, options, output, and exit code.
 
-The three read commands fan out across your profile. The two write commands act on one chain, so they require `-c` with a single name, and they print a plan unless you pass `--exec`.
+The four read commands fan out across your profile. The two write commands act on one chain, so they require `-c` with a single name, and they print a plan unless you pass `--exec`.
 
 | Command | What it does | Chains |
 | --- | --- | --- |
 | [`owner`](#evm-contract-owner-address) | Reads `owner()` | All selected |
 | [`proxy-info`](#evm-contract-proxy-info-address) | Detects the proxy type and follows it to implementation, admin, and owners | All selected |
+| [`deploy-info`](#evm-contract-deploy-info-address) | Detects CREATE, CREATE2 or CREATE3 and recovers the salt | All selected |
 | [`code`](#evm-contract-code-address) | Reports deployed bytecode size | All selected |
 | [`transfer-ownership`](#evm-contract-transfer-ownership-address-newowner) | Calls `transferOwnership(newOwner)` | Exactly one |
 | [`proxy-upgrade`](#evm-contract-proxy-upgrade-proxy-newimplementation) | Upgrades a transparent proxy through its ProxyAdmin | Exactly one |
 
 ## Options shared by these commands
 
-All five accept `-p` and `--json`. The read commands add the chain selection options described in [Configuration](configuration.md#chain-selection).
+All six accept `-p` and `--json`. The read commands add the chain selection options described in [Configuration](configuration.md#chain-selection).
 
 | Option | Effect |
 | --- | --- |
@@ -164,6 +165,149 @@ Read from a block explorer, so present only when one is reachable:
 
 The `Initialized` line deserves a second look before you act on it. On an OpenZeppelin v4 contract the CLI reads storage slot 0, a heuristic that a contract with a different layout can defeat, and the label says which source it used.
 
+## `evm contract deploy-info <address>`
+
+Works out how a contract was created — `CREATE`, `CREATE2`, or `CREATE3` — and for the deterministic ones recovers the salt from the creation transaction. Which answers "is this the same deterministic deployment on every chain, and what salt would reproduce it."
+
+```bash
+evm contract deploy-info <address> [-c chains | -xc chains] [-p profile] [--full] [--json]
+```
+
+| Option | Effect |
+| --- | --- |
+| `--full` | A block per chain instead of a row: the salt, the guarded salt, the CREATE3 proxy, the factory's owner, the init code hash, and the creation date |
+
+Nothing is reported on the strength of a factory's name. A salt appears only when it, the factory and the init code reproduce the address under the opcode's own derivation, so a `Verified:` line names the checks that passed. That is also what makes the salt recoverable from a factory nobody has catalogued: any 32-byte value in the call that derives the right address is the salt rather than a coincidence.
+
+### Compare one address across chains
+
+```bash
+evm contract deploy-info 0x000000000022D473030F116dDEE9F6B43aC78BA3
+```
+
+```text
+Deploy Info: 0x000000000022D473030F116dDEE9F6B43aC78BA3
+
+Chain           Chain ID   Method    Deployer / factory
+───────────────────────────────────────────────────────────────────────────────
+mainnet         1          CREATE2   0x4e59b44847b379578588920cA78FbF26c0B4956C
+base            8453       CREATE2   0x4e59b44847b379578588920cA78FbF26c0B4956C
+xdai            100        CREATE2   0x4e59b44847b379578588920cA78FbF26c0B4956C
+sepolia         11155111   CREATE2   0x4e59b44847b379578588920cA78FbF26c0B4956C
+
+Method, factory and salt are identical on all 4 chains
+  CREATE2 via Arachnid deterministic deployment proxy
+  salt 0x0000000000000000000000000000000000000000d3af2663da51c10215000000
+```
+
+The salt has no column of its own, because a 32-byte value is 66 characters and abbreviating the one field people copy makes it useless. It goes in the summary instead, which groups the chains by what determines their address — so a chain deployed with a different salt, or by hand, separates out:
+
+```text
+Deployment differs across chains (2 variants):
+  base, arbitrum: CREATE3 via CreateX
+    salt 0x1fccc097db89a86bfc474a1028f93958295b1fb7001701fdee5a55f70067737d
+  mainnet: CREATE by 0xa4659995DC39d891C1bA9131Aaf5F000E5B57224
+```
+
+A row whose method reads `unknown`, or a summary group that does, means the creation was found but nothing reproduced the address; the method is printed in yellow rather than cyan in that case. A chain that could not be read at all takes the reason in place of its method, and `no creation record from the explorer` covers both a source that answered with nothing and one that did not answer.
+
+### Read one deployment in full
+
+```bash
+evm contract deploy-info 0x9afd337e41F59E5c2E6f2be05f32E958A4DBcd9A -c mainnet --full
+```
+
+```text
+Deploy Info: 0x9afd337e41F59E5c2E6f2be05f32E958A4DBcd9A
+
+mainnet (chain ID 1)
+  Method:         CREATE3
+  Sender:         0x1FcCC097db89A86Bfc474A1028F93958295b1Fb7
+  Factory:        0xba5Ed099633D3B313e4D5F7bdc1305d3c28ba5Ed (CreateX)
+  Salt:           0x1fccc097db89a86bfc474a1028f93958295b1fb7001701fdee5a55f70067737d (submitted)
+  Guarded salt:   0xdedaabd1e6d9792197de57efeb9da030a82bf97e6180df5fbffb8c35332665f5
+                  keccak256(sender, salt) - permissioned deploy protection
+  CREATE3 proxy:  0x1801AA29D082C8471f2c07ED17bdF5F904eE4ad5 (still deployed)
+  Proxy shape:    canonical (Solady, solmate, CreateX)
+  Verified:       proxy matches CREATE2(factory, guarded salt, proxy init code hash),
+                  address matches CREATE(proxy, 1)
+  Init code hash: 0xf2f6dd96ef8235b833b69fcc419a6f76fed0a469b10b45a354ad43b530a2aacd
+                  does not affect the address under CREATE3
+  Creation tx:    0x187e4836894c59922d411c064ae4d1565ebdeac3c0069f3232e749c15db1aa7d
+  Created on:     2024-06-02
+```
+
+Two fields there deserve reading carefully.
+
+`Guarded salt` appears when the factory did not use the salt it was handed. CreateX hashes it first, choosing one of four rules by the salt's own 21st byte, and only the guarded value reproduces the address — so the command reports both, and names the rule it identified. The salt above starts with the sender's own address, which is CreateX's permissioned deploy protection: nobody else can deploy at it.
+
+`Init code hash` is reported for every method, but only determines the address under CREATE2. Under CREATE3 the contract's bytecode has no bearing on where it lands, which is the property CREATE3 exists for, and the output says so rather than leaving you to remember.
+
+### CREATE3 through a proxy that no longer exists
+
+A CREATE3 factory deploys a small proxy with CREATE2 and has the proxy `CREATE` the contract. Some proxies end their runtime in `SELFDESTRUCT`, and since they are created and destroyed inside one transaction, EIP-6780 does not preserve them — the proxy address holds no code today. Neither derivation needs it:
+
+```bash
+evm contract deploy-info 0xa7bCb4EAc8964306F9e3764f67Db6A7af6DdF99A -c mainnet --full
+```
+
+```text
+mainnet (chain ID 1)
+  Method:         CREATE3
+  Sender:         0x9ceef06f7042D6FF7F7F0EE4BbCa41E4B0989A0b
+  Factory:        0x65B3Db8bAeF0215A1F9B14c506D2a3078b2C84AE (1inch Create3Deployer (legacy))
+  Factory owner:  0x0BD61d605C64A857C3D94779aEf7cA295702b3A2 (only account that can deploy here)
+  Salt:           0x551cf9a686486608d89182cdefb06db09f5e95c7447085d60212d39279480f59
+  CREATE3 proxy:  0xFb742D35dD3A3Ca8Da4A79AC062064164845C6B9 (self-destructed, no code)
+  Proxy shape:    self-destructing (1inch legacy)
+  Verified:       proxy matches CREATE2(factory, salt, proxy init code hash),
+                  address matches CREATE(proxy, 1),
+                  factory addressOf(salt) returns this address
+  Init code hash: 0xe52cbcecc4875dd9b386fb512e90e62b753b15dd3bc2633497c2c812be9730fe
+                  does not affect the address under CREATE3
+  Creation tx:    0x597a99eb67544e5a684db000eab716d404a40dd001eacd8e9da8274d6a4eeeed
+  Created on:     2024-08-29
+```
+
+`Factory owner` is printed when the factory is `Ownable`, because a factory whose `deploy` is `onlyOwner` hands that one account every address derivable from it. `addressOf(salt) returns this address` is a third check, available on factories that expose that view, and it confirms the factory is a CREATE3 deployer of that family rather than an address that happened to fit the arithmetic.
+
+### What each method means
+
+| Method | Reported when | Reproducible elsewhere |
+| --- | --- | --- |
+| `CREATE` | The address follows from an account's address and nonce, or from a creating contract's nonce, which is found by searching its creations | No — the nonce would have to match |
+| `CREATE2` | The factory, the salt and the init code hash reproduce the address | Yes, given the same factory and init code |
+| `CREATE3` | The salt reproduces the intermediate proxy, and the proxy reproduces the address | Yes, given the same factory — the bytecode may differ |
+| `unknown` | The creation was found but nothing reproduced the address | Unknown |
+
+A deployment sent straight from an account reports `Deployer` and its nonce; one made by a contract reports `Created by` and the nonce that contract was on, which turns "deployed by a factory" into a fact you can recompute.
+
+### Factories it names
+
+Recognition does not depend on this list — a factory at an address nobody has catalogued still resolves, from the shape of the call and from what reproduces the address. The list only supplies a name for the output.
+
+| Factory | Address |
+| --- | --- |
+| Arachnid deterministic deployment proxy | `0x4e59b44847b379578588920cA78FbF26c0B4956C` |
+| Safe Singleton Factory | `0x914d7Fec6aaC8cd542e72Bca78B30650d45643d7` |
+| Create2Deployer | `0x13b0D85CcB8bf860b6b79AF3029fCA081AE9beF2` |
+| ImmutableCreate2Factory | `0x0000000000FFe8B47B3e2130213B802212439497` |
+| CreateX | `0xba5Ed099633D3B313e4D5F7bdc1305d3c28ba5Ed` |
+| 1inch Create3Deployer (legacy) | `0x65B3Db8bAeF0215A1F9B14c506D2a3078b2C84AE` |
+
+### When the salt cannot be recovered
+
+Two cases end in `unknown`, and the `Salt:` line says which.
+
+A factory that derives its salt from something other than the call — a Uniswap V2 pair, whose salt is a hash of the two token addresses — leaves nothing to find, and the report says `not recovered - the factory derives it from values not in the call` or `not recovered - no 32-byte word in the calldata reproduces the address` rather than presenting a guess as a salt.
+
+An RPC endpoint that no longer serves the creation transaction leaves the deployer and the transaction hash intact but nothing to decode, and says `creation transaction not available from this RPC endpoint`. Pointing `-c` at a chain whose endpoint keeps history fixes it.
+
+> [!NOTE]
+> Finding the creation transaction at all needs an explorer, so every chain here reports `needs an explorer API` without one, and the run says so once on stderr. Add a key with [`evm explorer set`](explorer-commands.md#evm-explorer-set-explorer-apikey), or give the chain its own `explorer_api`; see [Block explorer access](configuration.md#block-explorer-access).
+
+The JSON form carries the same facts per chain, including `verified`, `guardedSalt`, `create3Proxy`, `create3ProxyKind` and `factoryNonce`, and omits what does not apply.
+
 ## `evm contract code <address>`
 
 Reports whether an address holds bytecode and how much, which is the quickest way to confirm a deployment landed on the chains you expected.
@@ -279,6 +423,7 @@ The read commands treat a per-chain failure as data, and the write commands trea
 | --- | --- |
 | `owner` | The address is invalid. Per-chain failures don't change the exit code. |
 | `proxy-info` | The address is invalid, or `-s` and `--full` are combined. |
+| `deploy-info` | The address is invalid. A chain that reports `unknown`, or no explorer at all, still exits `0`. |
 | `code` | The address is invalid, or `--full` is used with anything other than one chain. |
 | `transfer-ownership` | Any validation, setup, or send error. A **dry run whose static call reverts still exits `0`**. |
 | `proxy-upgrade` | Same as `transfer-ownership`, including the dry-run exception. |
@@ -288,6 +433,6 @@ The read commands treat a per-chain failure as data, and the write commands trea
 Two of these commands depend on configuration covered elsewhere, and one page collects their errors.
 
 - [Wallet commands](wallet-commands.md) covers balances, transfers, and nonce management.
-- [Explorer commands](explorer-commands.md) covers the API keys that `proxy-info --full` depends on.
+- [Explorer commands](explorer-commands.md) covers the API keys that `proxy-info --full` and `deploy-info` depend on.
 - [Configuration](configuration.md#block-explorer-access) explains the order explorer sources are tried.
 - [Troubleshooting](troubleshooting.md) lists these commands' errors with causes and fixes.

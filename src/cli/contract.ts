@@ -8,6 +8,7 @@ import { transferOwnershipCommand } from '../commands/contract/transfer-ownershi
 import { proxyInfoCommand } from '../commands/contract/proxy-info.js';
 import { proxyUpgradeCommand } from '../commands/contract/proxy-upgrade.js';
 import { codeCommand } from '../commands/contract/code.js';
+import { deployInfoCommand } from '../commands/contract/deploy-info.js';
 
 export function buildContractCommand(): Command {
   const contract = new Command('contract').description(
@@ -88,6 +89,25 @@ Examples:
   $ evm contract proxy-upgrade 0xProxy... 0xNewImpl... --private-key DEPLOYER_PK -c base --data 0x8129fc1c --exec`
     )
     .action(proxyUpgradeCommand);
+
+  contract
+    .command('deploy-info <address>')
+    .description('Detect how a contract was deployed (CREATE/CREATE2/CREATE3) and recover its salt')
+    .option('-c, --chain <chains>', 'Chain(s) to query (comma-separated; default: every chain in the profile)')
+    .addOption(
+      new Option('-xc, --exclude-chain <chains>', 'Exclude chain(s) from the profile (comma-separated)').conflicts('chain')
+    )
+    .option('-p, --profile <nameOrPath>', 'Profile to use (default: default, or $EVM_ELF_PROFILE)')
+    .option('--full', 'Per-chain detail: salt, guarded salt, CREATE3 proxy, factory owner, dates')
+    .option('--json', 'Output as JSON')
+    .addHelpText(
+      'after',
+      `
+Examples:
+  $ evm contract deploy-info 0x5d0F...95eB
+  $ evm contract deploy-info 0x5d0F...95eB -c base --full`
+    )
+    .action(deployInfoCommand);
 
   contract
     .command('code <address>')

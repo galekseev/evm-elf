@@ -2,8 +2,9 @@
  * EIP-1967 proxy storage slots and minimal ABIs for ownership/proxy commands
  */
 
-import { ZeroAddress, dataSlice, getAddress, zeroPadValue } from 'ethers';
+import { Contract, ZeroAddress, dataSlice, getAddress, zeroPadValue } from 'ethers';
 import type { JsonRpcProvider } from 'ethers';
+import type { ProxyAccountInfo } from '../types.js';
 
 // bytes32(uint256(keccak256("eip1967.proxy.implementation")) - 1)
 export const EIP1967_IMPLEMENTATION_SLOT =
@@ -119,6 +120,25 @@ export async function getStorageAddress(
 export async function hasCode(provider: JsonRpcProvider, address: string): Promise<boolean> {
   const code = await provider.getCode(address);
   return code !== '0x';
+}
+
+/**
+ * Classify an address: EOA, Gnosis Safe (with threshold/owners), or other contract
+ */
+export async function describeAccount(
+  provider: JsonRpcProvider,
+  address: string
+): Promise<ProxyAccountInfo> {
+  if (!(await hasCode(provider, address))) {
+    return { kind: 'eoa' };
+  }
+  try {
+    const safe = new Contract(address, SAFE_ABI, provider);
+    const [threshold, owners] = await Promise.all([safe.getThreshold(), safe.getOwners()]);
+    return { kind: 'safe', threshold: Number(threshold), ownersCount: (owners as string[]).length };
+  } catch {
+    return { kind: 'contract' };
+  }
 }
 
 /**

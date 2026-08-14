@@ -168,7 +168,7 @@ export type ProxyType =
   | 'proxy-admin'      // not a proxy: the address is an OZ ProxyAdmin (has upgradeAndCall)
   | 'none';            // no proxy markers found
 
-// Account classification for owner addresses (--full)
+// Account classification for owner addresses (--full); also used for a factory owner
 export interface ProxyAccountInfo {
   kind: 'eoa' | 'safe' | 'contract';
   threshold?: number;       // Safe threshold
@@ -221,6 +221,38 @@ export interface ProxyInfoResult {
   error?: string;
 }
 
+// How the address was produced. 'unknown' means the creation could not be read,
+// not that the contract was created by some other means.
+export type DeploymentMethod = 'create' | 'create2' | 'create3' | 'unknown';
+
+export interface DeployInfoResult {
+  chain: string;
+  chainId: number;
+  address: string;
+  method?: DeploymentMethod;
+  deployer?: string;                  // sender of the creation transaction
+  deployerNonce?: number;             // set for a deployment sent straight from an account
+  factory?: string;                   // contract the creation went through
+  factoryName?: string;               // known factory, named
+  factoryNonce?: number;              // nonce at which the factory created it, for a plain CREATE
+  factoryOwner?: string;              // Ownable factory: the only account that can deploy (--full)
+  factoryOwnerInfo?: ProxyAccountInfo;
+  addressOfMatches?: boolean;         // factory's own addressOf(salt) agrees (--full)
+  salt?: string;                      // salt as submitted to the factory
+  saltNote?: string;                  // why no salt is reported
+  guardedSalt?: string;               // value the factory derived from the salt and used
+  guardLabel?: string;                // rule that produced the guarded salt
+  create3Proxy?: string;              // intermediate proxy of a CREATE3 deployment
+  create3ProxyKind?: string;          // which of the two proxy shapes it used
+  create3ProxyDestroyed?: boolean;    // the proxy self-destructed, so it holds no code
+  initCodeHash?: string;              // keccak256 of the init code the creation ran
+  verified?: boolean;                 // the reported values reproduce the address
+  creationTxHash?: string;
+  createdAt?: number;                 // creation block timestamp (unix seconds)
+  explorerSource?: string;            // explorer that answered first (--json only)
+  error?: string;
+}
+
 export interface TransferOwnershipResult {
   chain: string;
   chainId: number;
@@ -258,6 +290,10 @@ export interface UpgradeProxyResult {
 export interface ContractProxyInfoOptions extends WalletOptions {
   short?: boolean;          // only print chain and detected proxy type
   full?: boolean;           // extra diagnostics (code size, admin version, ERC-1822 check)
+}
+
+export interface ContractDeployInfoOptions extends WalletOptions {
+  full?: boolean;           // per-chain detail instead of one row per chain
 }
 
 export interface ContractTransferOwnershipOptions extends WalletOptions {

@@ -8,7 +8,7 @@ This page lists the messages the CLI produces, what causes each one, and how to 
 
 Before chasing a specific message, know where the CLI puts it. A read command that fans out treats a chain failure as data rather than as failure.
 
-`evm contract owner`, `evm wallet balance`, `evm contract proxy-info`, and `evm contract code` report a per-chain problem in that chain's row and still exit `0`:
+`evm contract owner`, `evm wallet balance`, `evm contract proxy-info`, `evm contract deploy-info`, and `evm contract code` report a per-chain problem in that chain's row and still exit `0`:
 
 ```text
 Chain           Chain ID   Owner
@@ -237,6 +237,18 @@ Three causes, in order of likelihood. The chain has no `coingecko_id` in the pro
 
 Pricing is best-effort by design, so a slow source never fails a balance query. See [USD prices](configuration.md#usd-prices).
 
+### `needs an explorer API` from `deploy-info`
+
+`deploy-info` starts from the creation transaction, and only an explorer can say which transaction that was. Without a source for that chain it has nothing to work from, so the whole row reads `needs an explorer API` rather than losing a field or two, and the run adds the same one-line notice on stderr as the section below. Add a key with `evm explorer set etherscan '${ETHERSCAN_API_KEY}'`, or give the chain its own `explorer_api`.
+
+### `deploy-info` reports the method as `unknown`
+
+The creation was found, but nothing reproduced the address, so no method can be claimed. The `Salt:` line in `--full` says which of two situations it is.
+
+`not recovered - the factory derives it from values not in the call` or `no 32-byte word in the calldata reproduces the address` means the salt is not there to be found. A Uniswap V2 pair is the clearest example: its salt is a hash of the two token addresses, computed inside the factory. The deployment was deterministic, but the CLI reports what it can prove rather than presenting a plausible word as the salt.
+
+`creation transaction not available from this RPC endpoint` is different, and worth retrying elsewhere. The explorer knew the transaction hash and the endpoint would not serve the transaction, which some public endpoints do for old blocks. The deployer and the transaction hash are still reported; point that chain at an endpoint that keeps history and the salt usually resolves.
+
 ### `proxy-info --full` shows fewer fields than expected
 
 The implementation name, the upgrade history, the creation transaction, and the ProxyAdmin trace all come from a block explorer, not from the RPC endpoint.
@@ -279,7 +291,7 @@ These stop the command before it reaches a chain. Each one names what it receive
 
 | Message | Fix |
 | --- | --- |
-| `Invalid Ethereum address: <value>` | Pass a checksummed 20-byte address. From `owner`, `proxy-info`, and `code`. |
+| `Invalid Ethereum address: <value>` | Pass a checksummed 20-byte address. From `owner`, `proxy-info`, `deploy-info`, and `code`. |
 | `Invalid recipient address: <value>` | Same, for the `<to>` argument of `send`. |
 | `Invalid contract address: <value>` | Same, for the first argument of `transfer-ownership`. |
 | `Invalid new owner address: <value>` | Same, for the second argument of `transfer-ownership`. |

@@ -64,10 +64,18 @@ export async function getContractCreation(
   endpoint: ExplorerEndpoint,
   address: string
 ): Promise<ContractCreation | null> {
-  const body = await fetchExplorer<{ txHash?: string; contractCreator?: string }[] | string>(
-    endpoint,
-    `module=contract&action=getcontractcreation&contractaddresses=${address}`
-  );
+  const body = await fetchExplorer<
+    {
+      txHash?: string;
+      contractCreator?: string;
+      blockNumber?: string;
+      timeStamp?: string;
+      timestamp?: string;
+      contractFactory?: string;
+      creationBytecode?: string;
+    }[]
+    | string
+  >(endpoint, `module=contract&action=getcontractcreation&contractaddresses=${address}`);
   if (!body || body.status !== '1' || !Array.isArray(body.result) || body.result.length === 0) {
     return null;
   }
@@ -75,7 +83,17 @@ export async function getContractCreation(
   if (!entry.txHash || !entry.contractCreator) {
     return null;
   }
-  return { txHash: entry.txHash, creator: entry.contractCreator };
+  // Only Etherscan returns the last four; Blockscout stops at creator and txHash.
+  const blockNumber = parseHexOrDecimal(entry.blockNumber);
+  const timestamp = parseHexOrDecimal(entry.timeStamp ?? entry.timestamp);
+  return {
+    txHash: entry.txHash,
+    creator: entry.contractCreator,
+    ...(blockNumber !== undefined ? { blockNumber } : {}),
+    ...(timestamp !== undefined ? { timestamp } : {}),
+    ...(entry.contractFactory ? { factory: entry.contractFactory } : {}),
+    ...(entry.creationBytecode ? { creationBytecode: entry.creationBytecode } : {}),
+  };
 }
 
 /**

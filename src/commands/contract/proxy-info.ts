@@ -7,11 +7,7 @@
 import chalk from 'chalk';
 import { Contract, ZeroAddress, formatEther, isAddress, keccak256 } from 'ethers';
 import type { JsonRpcProvider } from 'ethers';
-import type {
-  ContractProxyInfoOptions,
-  ProxyAccountInfo,
-  ProxyInfoResult,
-} from '../../types.js';
+import type { ContractProxyInfoOptions, ProxyInfoResult } from '../../types.js';
 import {
   loadProfile,
   nativeTokenLabel,
@@ -31,10 +27,10 @@ import {
   OWNABLE_ABI,
   PAUSABLE_ABI,
   PROXIABLE_ABI,
-  SAFE_ABI,
   UINT64_MAX,
   UPGRADED_TOPIC,
   UPGRADE_INTERFACE_ABI,
+  describeAccount,
   getStorageAddress,
   hasCode,
   looksLikeProxyAdmin,
@@ -117,25 +113,6 @@ async function findManagedProxy(
     }
   }
   return null;
-}
-
-/**
- * Classify an address: EOA, Gnosis Safe (with threshold/owners), or other contract
- */
-async function describeAccount(
-  provider: JsonRpcProvider,
-  address: string
-): Promise<ProxyAccountInfo> {
-  if (!(await hasCode(provider, address))) {
-    return { kind: 'eoa' };
-  }
-  try {
-    const safe = new Contract(address, SAFE_ABI, provider);
-    const [threshold, owners] = await Promise.all([safe.getThreshold(), safe.getOwners()]);
-    return { kind: 'safe', threshold: Number(threshold), ownersCount: (owners as string[]).length };
-  } catch {
-    return { kind: 'contract' };
-  }
 }
 
 /**

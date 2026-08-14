@@ -45,7 +45,7 @@ This README is the overview. The [docs](docs/) directory covers setup and use in
 - [Wallet commands](docs/wallet-commands.md) and [Contract commands](docs/contract-commands.md) — every argument, option, output, and exit code
 - [Profile commands](docs/profile-commands.md) — creating, copying, and switching between profiles
 - [Chain commands](docs/chain-commands.md) — adding a chain to a profile and pointing it at your own endpoint
-- [Explorer commands](docs/explorer-commands.md) — the block explorer API keys that `proxy-info --full` depends on
+- [Explorer commands](docs/explorer-commands.md) — the block explorer API keys that `proxy-info --full` and `deploy-info` depend on
 - [Troubleshooting](docs/troubleshooting.md) — the error messages, with a cause and a fix for each
 
 ## Contents
@@ -53,7 +53,7 @@ This README is the overview. The [docs](docs/) directory covers setup and use in
 - [Documentation](#documentation) — the full guides, in `docs/`
 - [Options](#options) — the flags every command shares
 - [Wallet commands](#wallet-commands): [`balance`](#balance-wallet), [`send`](#send-to), [`set-nonce`](#set-nonce-target), [`generate`](#generate), [`address`](#address-private-key)
-- [Contract commands](#contract-commands): [`owner`](#owner-address), [`proxy-info`](#proxy-info-address), [`transfer-ownership`](#transfer-ownership-address-newowner), [`proxy-upgrade`](#proxy-upgrade-proxy-newimplementation), [`code`](#code-address)
+- [Contract commands](#contract-commands): [`owner`](#owner-address), [`proxy-info`](#proxy-info-address), [`deploy-info`](#deploy-info-address), [`transfer-ownership`](#transfer-ownership-address-newowner), [`proxy-upgrade`](#proxy-upgrade-proxy-newimplementation), [`code`](#code-address)
 - [Configuration](#configuration): [the profile file](#the-profile-file), [`evm profile`](#profile-commands), [`evm chain`](#chain-commands), [`evm explorer`](#explorer-commands), [chain selection](#chain-selection), [private keys](#private-keys), [environment variables](#environment-variables), [prices](#prices)
 - [Requirements](#requirements), [Development](#development), [License](#license)
 
@@ -158,7 +158,7 @@ evm wallet address DEPLOYER_PK
 
 ## Contract commands
 
-Ownership and proxy inspection for a contract that lives at the same address on several chains. The reads fan out; `transfer-ownership` and `proxy-upgrade` act on one chain, so `-c` is required there.
+Ownership, proxy and deployment inspection for a contract that lives at the same address on several chains. The reads fan out; `transfer-ownership` and `proxy-upgrade` act on one chain, so `-c` is required there.
 
 ### `owner <address>`
 
@@ -233,6 +233,37 @@ evm explorer list                                   # what is configured, keys m
 ```
 
 With nothing configured, those fields are left out and the run says so once on stderr. See [Explorer commands](docs/explorer-commands.md).
+
+### `deploy-info <address>`
+
+Works out whether a contract was deployed with `CREATE`, `CREATE2` or `CREATE3`, and recovers the salt from the creation transaction — so you can tell a deterministic deployment from a coincidence, and reproduce the address yourself.
+
+```bash
+evm contract deploy-info 0x000000000022D473030F116dDEE9F6B43aC78BA3
+```
+
+```
+Deploy Info: 0x000000000022D473030F116dDEE9F6B43aC78BA3
+
+Chain           Chain ID   Method    Deployer / factory
+───────────────────────────────────────────────────────────────────────────────
+mainnet         1          CREATE2   0x4e59b44847b379578588920cA78FbF26c0B4956C
+base            8453       CREATE2   0x4e59b44847b379578588920cA78FbF26c0B4956C
+xdai            100        CREATE2   0x4e59b44847b379578588920cA78FbF26c0B4956C
+sepolia         11155111   CREATE2   0x4e59b44847b379578588920cA78FbF26c0B4956C
+
+Method, factory and salt are identical on all 4 chains
+  CREATE2 via Arachnid deterministic deployment proxy
+  salt 0x0000000000000000000000000000000000000000d3af2663da51c10215000000
+```
+
+Nothing is reported on the strength of a factory's name: a salt appears only when it reproduces the address under the opcode's own derivation, and `--full` lists the checks that passed. That is what lets it recover a salt from a factory nobody has catalogued, since any 32-byte value in the call that derives the right address is the salt.
+
+```bash
+evm contract deploy-info 0xa7bC...F99A -c mainnet --full   # salt, proxy, factory owner, dates
+```
+
+`--full` also reports what a CREATE3 deployment needs to be understood: the intermediate proxy and whether it self-destructed, the guarded salt when the factory hashed the one it was handed (CreateX's four rules, named), and the factory's owner when `deploy` is `onlyOwner`. Finding the creation transaction needs an explorer, so see [Explorer commands](docs/explorer-commands.md).
 
 ### `transfer-ownership <address> <newOwner>`
 
@@ -348,7 +379,7 @@ Metadata the entry does not have yet — `symbol`, `coingecko_id`, `explorer_api
 
 ### Explorer commands
 
-`evm explorer` manages the block explorer API keys that `contract proxy-info --full` uses. One key covers every chain a source supports, so there is no per-chain setting:
+`evm explorer` manages the block explorer API keys that `contract proxy-info --full` and `contract deploy-info` use. One key covers every chain a source supports, so there is no per-chain setting:
 
 ```bash
 evm explorer list                                     # what is configured, keys masked
@@ -357,7 +388,7 @@ evm explorer set blockscout YourBlockscoutKey         # or store it in the profi
 evm explorer remove blockscout
 ```
 
-`set` asks the explorer whether it accepts the key before writing it, the way `chain set` reads the chain id from the endpoint; `--no-verify` skips that, which is what you want when writing a profile for another machine. Sources are tried in order: a chain's own `explorer_api`, then `etherscan`, then `blockscout`. With none configured, the explorer-backed fields are left out and `proxy-info` says so once on stderr.
+`set` asks the explorer whether it accepts the key before writing it, the way `chain set` reads the chain id from the endpoint; `--no-verify` skips that, which is what you want when writing a profile for another machine. Sources are tried in order: a chain's own `explorer_api`, then `etherscan`, then `blockscout`. With none configured, the explorer-backed fields are left out and the command says so once on stderr.
 
 ### Chain selection
 
@@ -407,7 +438,7 @@ The lookup is best-effort: a failing, rate-limited or slow source (5s timeout) l
 
 - Node.js 22+ (the `engines` field of [package.json](package.json))
 - An RPC endpoint per chain. The bundled profile ships the chains' own public endpoints; point the ones you use at your own provider with `evm chain set`.
-- An explorer API key for the explorer-backed fields of `proxy-info`, stored with `evm explorer set`. Nothing else needs an API key.
+- An explorer API key for the explorer-backed fields of `proxy-info` and for `deploy-info`, stored with `evm explorer set`. Nothing else needs an API key.
 
 ## Development
 

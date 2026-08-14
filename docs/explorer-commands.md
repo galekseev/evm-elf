@@ -4,7 +4,7 @@
 
 `evm explorer` manages the block explorer API keys stored in a profile. This page documents each command's arguments, options, output, and exit code. For what the keys are used for and the order sources are tried, see [Block explorer access](configuration.md#block-explorer-access).
 
-One key covers every chain a source supports, so these commands take no chain argument. Only `evm contract proxy-info` uses an explorer, and only for the fields it can't read from an RPC endpoint.
+One key covers every chain a source supports, so these commands take no chain argument. Two commands use an explorer: `evm contract proxy-info`, for the fields it can't read from an RPC endpoint, and `evm contract deploy-info`, which needs one to find the creation transaction it works from.
 
 | Command | What it does |
 | --- | --- |
@@ -166,8 +166,8 @@ These commands exit `1` whenever they change nothing, which makes them safe to c
 
 ## Next steps
 
-These keys exist for one command, and one page explains what they buy you.
+These keys exist for two commands, and these pages explain what they buy you.
 
-- [Contract commands](contract-commands.md#evm-contract-proxy-info-address) documents the `proxy-info --full` fields that need an explorer.
+- [Contract commands](contract-commands.md#evm-contract-proxy-info-address) documents the `proxy-info --full` fields that need an explorer, and [`deploy-info`](contract-commands.md#evm-contract-deploy-info-address), which needs one for every answer it gives.
 - [Configuration](configuration.md#block-explorer-access) covers the order sources are tried and what happens when none is configured.
 - [Troubleshooting](troubleshooting.md#proxy-info---full-shows-fewer-fields-than-expected) helps when fields go missing.
