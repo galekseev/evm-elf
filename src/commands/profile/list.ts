@@ -95,8 +95,10 @@ export async function profileListCommand(options: ProfileListOptions): Promise<v
   console.log();
   if (summaries.some((summary) => summary.default)) {
     console.log(chalk.dim(legend(active)));
+    console.log();
   } else {
-    console.log(chalk.yellow(`Default profile '${active.name}' is missing: ${target.path}`));
+    // The legend is part of the answer; this is a diagnostic about the machine's
+    // state, so it goes to stderr and leaves the table redirectable on its own.
+    console.error(chalk.yellow(`Default profile '${active.name}' is missing: ${target.path}`));
   }
-  console.log();
 }

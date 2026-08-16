@@ -13,7 +13,9 @@ export async function profileCloneCommand(
   options: ProfileCloneOptions
 ): Promise<void> {
   assertProfileName(name);
-  const sourcePath = resolveProfilePath(source);
+  // The source may be a path, which is what makes a committed chain list
+  // usable; the target is a name, already checked above.
+  const sourcePath = resolveProfilePath(source, true);
   const path = resolveProfilePath(name);
   await copyProfile(sourcePath, path, Boolean(options.force));
 

@@ -10,10 +10,17 @@ import { chmod, copyFile, mkdir, readdir, rename, unlink, writeFile } from 'fs/p
 import { basename, dirname, extname, resolve } from 'path';
 import chalk from 'chalk';
 import { BUNDLED_DEFAULT_PROFILE_PATH, DEFAULT_POINTER_PATH, PROFILES_DIR } from './env.js';
+import { permissionFailure } from './fs-errors.js';
 
 const PROFILE_EXTENSIONS = ['.yaml', '.yml'];
 const PROFILE_NAME = /^[a-zA-Z0-9][a-zA-Z0-9._-]*$/;
-const EMPTY_PROFILE = `# evm-elf profile. Add chains with: evm chain set <chain> <rpc-url>\nchains: {}\n`;
+/**
+ * The blank line is load-bearing. A comment flush against the next key belongs
+ * to that key and moves with it, so `evm explorer set` inserting its section
+ * above `chains` would push this header down with it; separated by a blank
+ * line, the comment belongs to the document and stays at the top.
+ */
+const EMPTY_PROFILE = `# evm-elf profile. Add chains with: evm chain set <chain> <rpc-url>\n\nchains: {}\n`;
 
 /**
  * A profile may hold a literal API key in a header or in `explorers`, so it is
@@ -56,14 +63,14 @@ export async function listProfileFiles(): Promise<ProfileFile[]> {
  * run that got there first wins.
  */
 export async function ensureDefaultProfile(targetPath: string): Promise<void> {
-  await mkdir(dirname(targetPath), { recursive: true });
   try {
+    await mkdir(dirname(targetPath), { recursive: true });
     await copyFile(BUNDLED_DEFAULT_PROFILE_PATH, targetPath, constants.COPYFILE_EXCL);
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'EEXIST') {
       return;
     }
-    throw error;
+    throw permissionFailure(error, targetPath, 'write');
   }
   await chmod(targetPath, OWNER_ONLY);
   console.error(chalk.dim(`Created ${targetPath} from the bundled default profile`));
@@ -77,12 +84,16 @@ export async function createProfile(targetPath: string, empty: boolean): Promise
   if (existsSync(targetPath)) {
     throw new Error(`Profile already exists: ${targetPath}`);
   }
-  await mkdir(dirname(targetPath), { recursive: true });
-  if (empty) {
-    await writeFile(targetPath, EMPTY_PROFILE, { mode: OWNER_ONLY, flag: 'wx' });
-    return;
+  try {
+    await mkdir(dirname(targetPath), { recursive: true });
+    if (empty) {
+      await writeFile(targetPath, EMPTY_PROFILE, { mode: OWNER_ONLY, flag: 'wx' });
+      return;
+    }
+    await copyFile(BUNDLED_DEFAULT_PROFILE_PATH, targetPath, constants.COPYFILE_EXCL);
+  } catch (error) {
+    throw permissionFailure(error, targetPath, 'write');
   }
-  await copyFile(BUNDLED_DEFAULT_PROFILE_PATH, targetPath, constants.COPYFILE_EXCL);
   await chmod(targetPath, OWNER_ONLY);
 }
 
@@ -101,14 +112,21 @@ export async function copyProfile(
   if (!force && existsSync(targetPath)) {
     throw new Error(`Profile already exists: ${targetPath} (pass --force to overwrite)`);
   }
-  await mkdir(dirname(targetPath), { recursive: true });
-  const mode = force ? undefined : constants.COPYFILE_EXCL;
-  await copyFile(sourcePath, targetPath, mode);
+  try {
+    await mkdir(dirname(targetPath), { recursive: true });
+    await copyFile(sourcePath, targetPath, force ? undefined : constants.COPYFILE_EXCL);
+  } catch (error) {
+    throw permissionFailure(error, targetPath, 'write');
+  }
   await chmod(targetPath, OWNER_ONLY);
 }
 
 export async function deleteProfile(targetPath: string): Promise<void> {
-  await unlink(targetPath);
+  try {
+    await unlink(targetPath);
+  } catch (error) {
+    throw permissionFailure(error, targetPath, 'remove');
+  }
 }
 
 /**
@@ -124,14 +142,14 @@ export function readDefaultPointer(): string | undefined {
 }
 
 export async function writeDefaultPointer(name: string): Promise<void> {
-  await mkdir(PROFILES_DIR, { recursive: true });
   const tmpPath = `${DEFAULT_POINTER_PATH}.${process.pid}.tmp`;
   try {
+    await mkdir(PROFILES_DIR, { recursive: true });
     await writeFile(tmpPath, `${name}\n`, { mode: OWNER_ONLY });
     await rename(tmpPath, DEFAULT_POINTER_PATH);
   } catch (error) {
     await unlink(tmpPath).catch(() => undefined);
-    throw error;
+    throw permissionFailure(error, DEFAULT_POINTER_PATH, 'write');
   }
 }
 

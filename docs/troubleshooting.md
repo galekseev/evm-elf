@@ -18,6 +18,8 @@ polygon         0          Not in profile 'default' (evm chain set polygon <rpc-
 
 So a script that only checks the exit code sees success. Parse `--json` and look for an `error` key on each object instead. The exit codes each command uses are listed in [Wallet commands](wallet-commands.md#exit-codes), [Contract commands](contract-commands.md#exit-codes), [Profile commands](profile-commands.md#exit-codes), [Chain commands](chain-commands.md#exit-codes), and [Explorer commands](explorer-commands.md#exit-codes).
 
+Two codes are all the CLI uses: `0` when it did what you asked, `1` when it didn't. A run you interrupt is a third case and not an exit code at all. The CLI installs no signal handler, so `Ctrl-C` terminates the process by `SIGINT`, which a shell reports as `130`, and `SIGTERM` becomes `143`. Nothing is left half-written either way — a profile edit goes through a temporary file and a rename, so an interrupted one either happened or didn't.
+
 ## Fix installation and first-run errors
 
 These appear before the CLI reads any configuration.
@@ -80,6 +82,53 @@ The YAML file parsed, but its structure is wrong. A profile needs a top-level `c
 A chain entry contains a field the CLI doesn't recognize, which is almost always a typo in a field name. The parser rejects the file rather than ignoring the field and querying the wrong endpoint. The six valid fields are listed in [Chain fields](configuration.md#chain-fields).
 
 The same check produces `has a non-numeric chain_id` when `chain_id` is quoted or fractional, and `must be a mapping with chain_id and rpc_url` when a chain name has no entry beneath it.
+
+### A YAML syntax error, in the parser's own words
+
+A profile that isn't valid YAML fails before the CLI can check anything about its structure, so what you see is the parser's message rather than one of the `Invalid profile` messages above. It spans several lines, quotes the offending text, and points at a line and column:
+
+```text
+Implicit map keys need to be followed by map values at line 2, column 3:
+
+chains: [1, 2
+  ^^^^^^^^^^^
+```
+
+Unlike every other profile error, it doesn't name the file it came from. The file is whichever profile the command would have used, so print that first:
+
+```bash
+evm profile list
+```
+
+`evm profile list` is the command to reach for while a profile is broken: it marks that one `error`, prints the parse message beneath its row, and still lists the others. Unclosed brackets and inconsistent indentation account for most of these; compare yours against the example in [The profile file](configuration.md#the-profile-file).
+
+### `EACCES: permission denied, open '<path>'` or `EISDIR: illegal operation on a directory, read`
+
+The profile can't be read at all, so the message is the operating system's. `EACCES` means the file is there but its permissions don't allow reading it — every profile the CLI writes is `0600`, so this usually follows a `chown`, a restore from a backup, or a copy made as another user. `EISDIR` means a directory sits where the file should be.
+
+```bash
+ls -l ~/.config/evm-elf/profiles
+chmod 600 ~/.config/evm-elf/profiles/myproject.yaml
+```
+
+A write command fails the same way and changes nothing, because it reads the profile before editing it.
+
+### `Could not write <path>: permission denied. Nothing written.`
+
+The profile is readable but the directory holding it won't accept a write, so nothing was changed. The message names the profile and the directory rather than the temporary file the write was using, because that file is unlinked before you see the error:
+
+```text
+Could not write /home/you/.config/evm-elf/profiles/myproject.yaml: permission denied. Nothing written.
+Check the directory: ls -ld /home/you/.config/evm-elf/profiles
+```
+
+Usually the directory's owner isn't you, which follows a `sudo` run or a restore from a backup. Fix the ownership rather than loosening the mode — a profile can hold a literal API key:
+
+```bash
+sudo chown -R "$(id -un)" ~/.config/evm-elf
+```
+
+`evm profile remove` reports the same thing as `Could not remove <path>: permission denied. Nothing removed.` Every command that writes a profile behaves this way: `chain set`, `chain remove`, `explorer set`, `explorer remove`, and all of `evm profile`.
 
 ### `'myproject' is the profile in use; pass --force to remove it`
 

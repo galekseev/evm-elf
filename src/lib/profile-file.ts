@@ -11,6 +11,7 @@ import { mkdir, readFile, rename, unlink, writeFile } from 'fs/promises';
 import { dirname } from 'path';
 import { Document, isMap, parseDocument, type YAMLMap } from 'yaml';
 import type { ChainConfig } from '../types.js';
+import { permissionFailure } from './fs-errors.js';
 
 /** Field order used for chains this CLI writes */
 const FIELD_ORDER = ['chain_id', 'rpc_url', 'symbol', 'coingecko_id', 'explorer_api'] as const;
@@ -188,14 +189,14 @@ export function removeExplorer(doc: Document, name: string): boolean {
  * hold a literal API key.
  */
 export async function writeProfileDocument(filePath: string, doc: Document): Promise<void> {
-  await mkdir(dirname(filePath), { recursive: true });
   const tmpPath = `${filePath}.${process.pid}.tmp`;
   try {
+    await mkdir(dirname(filePath), { recursive: true });
     // lineWidth 0 keeps long RPC URLs on one line
     await writeFile(tmpPath, doc.toString({ lineWidth: 0 }), { mode: 0o600 });
     await rename(tmpPath, filePath);
   } catch (error) {
     await unlink(tmpPath).catch(() => undefined);
-    throw error;
+    throw permissionFailure(error, filePath, 'write');
   }
 }

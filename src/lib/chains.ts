@@ -22,13 +22,19 @@ import { assertProfileName, ensureDefaultProfile } from './profiles.js';
 import { parseRpcUrl, type RpcEndpoint } from './rpc.js';
 
 /**
- * Resolve a profile reference: anything path-like is used as given, a bare name
- * is looked up in the profiles directory. A bare name is checked here rather
- * than only in the `evm profile` commands, so that -p and $EVM_ELF_PROFILE
- * report an unusable name as such instead of as a missing file.
+ * Resolve a profile reference to a file path. A bare name is looked up in the
+ * profiles directory, and checked here rather than only in the `evm profile`
+ * commands, so that every route reports an unusable name as such instead of as
+ * a missing file.
+ *
+ * The path form belongs to the two arguments an operator types a path into: -p,
+ * and the source of `profile clone`. $EVM_ELF_PROFILE and the .default pointer
+ * name a profile, so a slash in either is an unusable name rather than a file
+ * outside the profiles directory — which is also what `profile set-default`
+ * says when asked to write such a value into the pointer.
  */
-export function resolveProfilePath(nameOrPath: string): string {
-  if (nameOrPath.includes('/') || isAbsolute(nameOrPath)) {
+export function resolveProfilePath(nameOrPath: string, allowPath = false): string {
+  if (allowPath && (nameOrPath.includes('/') || isAbsolute(nameOrPath))) {
     return resolve(process.cwd(), nameOrPath);
   }
   assertProfileName(nameOrPath);
@@ -149,8 +155,10 @@ async function readProfileFile(filePath: string): Promise<ProfileContents> {
 export async function resolveProfileTarget(
   nameOrPath?: string
 ): Promise<{ name: string; path: string }> {
+  // nameOrPath is defined exactly when -p supplied it, which is the one route
+  // the path form belongs to.
   const name = nameOrPath ?? defaultProfileName();
-  const filePath = resolveProfilePath(name);
+  const filePath = resolveProfilePath(name, nameOrPath !== undefined);
   if (!existsSync(filePath) && name === DEFAULT_PROFILE_NAME) {
     await ensureDefaultProfile(filePath);
   }
