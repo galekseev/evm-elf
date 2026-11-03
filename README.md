@@ -55,6 +55,7 @@ This README is the overview. The [docs](docs/) directory covers setup and use in
 - [Wallet commands](#wallet-commands): [`balance`](#balance-wallet), [`send`](#send-to), [`set-nonce`](#set-nonce-target), [`generate`](#generate), [`address`](#address-private-key)
 - [Contract commands](#contract-commands): [`owner`](#owner-address), [`proxy-info`](#proxy-info-address), [`deploy-info`](#deploy-info-address), [`transfer-ownership`](#transfer-ownership-address-newowner), [`proxy-upgrade`](#proxy-upgrade-proxy-newimplementation), [`code`](#code-address)
 - [Configuration](#configuration): [the profile file](#the-profile-file), [`evm profile`](#profile-commands), [`evm chain`](#chain-commands), [`evm explorer`](#explorer-commands), [chain selection](#chain-selection), [private keys](#private-keys), [environment variables](#environment-variables), [prices](#prices)
+- [AI agents](#ai-agents) — the rule that tells a coding agent when to reach for `evm`
 - [Requirements](#requirements), [Development](#development), [License](#license)
 
 ## Options
@@ -433,6 +434,17 @@ The same environment supplies the `${VAR}` references in a profile, such as RPC 
 | Anything else | Treated as `none`, with a warning on stderr. Setting the variable means you wanted to control the lookup, so an unrecognised value stops it rather than reaching for the network. |
 
 The lookup is best-effort: a failing, rate-limited or slow source (5s timeout) leaves the USD column empty rather than failing the command. Which coin a chain's native token is comes from the profile (`symbol`, `coingecko_id`), so a chain without those falls back to a lowercase `ether` for the token and reports no price.
+
+## AI agents
+
+A coding agent can run these commands itself. [rules/evm-elf.mdc](rules/evm-elf.mdc) tells it which questions `evm` answers in one pass — so it reaches for a command instead of a one-off ethers script — and how to call it: `--json` on everything, `-c` to narrow the fan-out, and no `--exec` on a transaction nobody asked for. Copy it into a project where the CLI is installed:
+
+```bash
+mkdir -p .cursor/rules
+cp "$(npm root -g)/@camoseed/evm-elf/rules/evm-elf.mdc" .cursor/rules/
+```
+
+The file is Markdown with Cursor frontmatter, so an agent that reads `AGENTS.md` or `CLAUDE.md` instead takes the body as it is.
 
 ## Requirements
 

@@ -1,0 +1,52 @@
+---
+description: Use the evm CLI (evm-elf) for onchain reads and writes across several EVM chains — wallet balances and nonces, contract owner, proxy type and implementation, CREATE2/CREATE3 deployment and salt, deployed bytecode — instead of writing an ethers or viem script or looping over RPC URLs. Read before running any evm command, and before anything that could broadcast a transaction.
+alwaysApply: false
+---
+
+# The `evm` CLI
+
+`evm` (package `@camoseed/evm-elf`) answers one question on every chain at once. A
+profile is the chain list, and reads fan out across it. `evm --version` says whether
+it is installed.
+
+## Reach for it when
+
+- A wallet's balance or nonce is wanted: `evm wallet balance <addr> --json`
+- Who owns a contract: `evm contract owner <addr> --json`
+- What a proxy is and where it points: `evm contract proxy-info <addr> --json`
+  (`-s` scans every chain fast; drop it on the chains that turn out to matter)
+- How a contract was deployed, and its salt: `evm contract deploy-info <addr> --json`
+- Whether an address has code: `evm contract code <addr> --json`
+
+Write no one-off script for those. There is no generic `call` command, so an
+arbitrary view function, event logs and contract source need a different tool.
+
+## Reading the output
+
+- Pass `--json`. It goes to stdout; warnings go to stderr.
+- Fan-out commands return an array of per-chain objects. A chain that failed
+  carries an `error` field and the exit code is still `0`, so check every entry
+  instead of the exit status. Exit `1` means bad arguments, or every chain failed.
+- Narrow with `-c base,arbitrum`, or `-xc mainnet`. Chains are queried
+  sequentially and the default profile uses public endpoints, so an unnarrowed
+  read is a dozen-plus round trips into rate limits.
+- `deploy-info` and `proxy-info --full` need an explorer API key. Without one
+  those fields are absent and a note lands on stderr — say the key is missing
+  rather than reporting the contract as lacking the data.
+- Guess no flags: `evm <group> <command> --help` documents each one.
+
+## Before anything broadcasts
+
+`wallet send`, `wallet set-nonce`, `contract transfer-ownership` and
+`contract proxy-upgrade` print a plan and stop. `--exec` sends it, with no
+confirmation prompt and no undo.
+
+- Never add `--exec` unless the user asked for that transaction, that amount and
+  that chain in this conversation. Run the dry run, show it, stop there.
+- Pass `-c <chain>` on every write. Without it `wallet send --exec` broadcasts on
+  every chain in the profile, and `--all --exec` empties the wallet on each one.
+- Pass a key as the name of an env var — `--private-key DEPLOYER_PK` — never as
+  hex in the command, which lands in shell history and the process list.
+- Repeat none of these outputs back: `wallet generate` prints a mnemonic and a
+  private key, and `chain list --json` / `explorer list --json` print stored keys
+  unmasked, though their table views mask them.

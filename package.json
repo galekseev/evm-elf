@@ -26,7 +26,8 @@
   },
   "files": [
     "dist",
-    "config"
+    "config",
+    "rules"
   ],
   "engines": {
     "node": ">=22.0.0"
